@@ -1,0 +1,2 @@
+# KanziApp
+Babaların uygulaması
