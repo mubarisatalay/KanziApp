@@ -1,0 +1,56 @@
+# ARM64 (Apple Silicon) overlay. Run with:
+#   docker compose -f docker-compose.arm64.yml up
+#
+# Each service `extends` its counterpart in docker-compose.yml and only pins
+# platform: linux/arm64 — so image/env/ports/healthcheck/volume-mounts are all
+# inherited, no duplication.
+#
+# CAVEAT: Compose's `extends` intentionally does NOT copy relationship keys
+# (depends_on, links, volumes_from) or the top-level `volumes:` section. So the
+# two services that use depends_on re-declare it, and the named volumes are
+# re-declared at the bottom. Everything else stays single-sourced in the base file.
+services:
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+    platform: linux/arm64
+
+  minio:
+    extends:
+      file: docker-compose.yml
+      service: minio
+    platform: linux/arm64
+
+  minio-init:
+    extends:
+      file: docker-compose.yml
+      service: minio-init
+    platform: linux/arm64
+    depends_on:                       # not inherited via extends — see caveat
+      minio:
+        condition: service_healthy
+
+  mailpit:
+    extends:
+      file: docker-compose.yml
+      service: mailpit
+    platform: linux/arm64
+
+  backend:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    platform: linux/arm64
+    profiles: ["app"]                 # only starts with `docker compose --profile app up`
+    depends_on:                       # not inherited via extends — see caveat
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+volumes:                              # top-level section not inherited via extends
+  pgdata:
+  miniodata:

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="003-create-challenges" author="kaan.kahveci">
+        <createTable tableName="challenges">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="room_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_challenges_room"
+                             references="rooms(id)" deleteCascade="true"/>
+            </column>
+            <column name="challenge_text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="challenge_type" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="challenge_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="challenges" columnNames="room_id, challenge_date"
+                             constraintName="uq_challenges_room_date"/>
+        <sql>ALTER TABLE challenges ADD CONSTRAINT chk_challenges_type
+             CHECK (challenge_type IN ('photo', 'text', 'photo_text'));</sql>
+        <createIndex tableName="challenges" indexName="idx_challenges_room_date">
+            <column name="room_id"/>
+            <column name="challenge_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="003-create-submissions" author="kaan.kahveci">
+        <createTable tableName="submissions">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="challenge_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_submissions_challenge"
+                             references="challenges(id)" deleteCascade="true"/>
+            </column>
+            <column name="user_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_submissions_user"
+                             references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="room_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_submissions_room"
+                             references="rooms(id)" deleteCascade="true"/>
+            </column>
+            <column name="image_url" type="TEXT"/>
+            <column name="text_content" type="TEXT"/>
+            <column name="submitted_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="submissions" columnNames="challenge_id, user_id"
+                             constraintName="uq_submissions_challenge_user"/>
+        <createIndex tableName="submissions" indexName="idx_submissions_challenge_id">
+            <column name="challenge_id"/>
+        </createIndex>
+        <createIndex tableName="submissions" indexName="idx_submissions_user_id">
+            <column name="user_id"/>
+        </createIndex>
+        <createIndex tableName="submissions" indexName="idx_submissions_room_id">
+            <column name="room_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="003-create-votes" author="kaan.kahveci">
+        <createTable tableName="votes">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="submission_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_votes_submission"
+                             references="submissions(id)" deleteCascade="true"/>
+            </column>
+            <column name="voter_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_votes_voter"
+                             references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="vote_value" type="INTEGER" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="voted_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="votes" columnNames="submission_id, voter_id"
+                             constraintName="uq_votes_submission_voter"/>
+        <sql>ALTER TABLE votes ADD CONSTRAINT chk_votes_value
+             CHECK (vote_value >= 1 AND vote_value &lt;= 5);</sql>
+        <createIndex tableName="votes" indexName="idx_votes_submission_id">
+            <column name="submission_id"/>
+        </createIndex>
+        <createIndex tableName="votes" indexName="idx_votes_voter_id">
+            <column name="voter_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

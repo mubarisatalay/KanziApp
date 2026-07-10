@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="002-create-rooms" author="kaan.kahveci">
+        <createTable tableName="rooms">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="code" type="TEXT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_rooms_code"/>
+            </column>
+            <column name="created_by" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_rooms_created_by"
+                             references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="rooms" indexName="idx_rooms_code">
+            <column name="code"/>
+        </createIndex>
+        <createIndex tableName="rooms" indexName="idx_rooms_created_by">
+            <column name="created_by"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="002-create-room-members" author="kaan.kahveci">
+        <createTable tableName="room_members">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="room_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_room_members_room"
+                             references="rooms(id)" deleteCascade="true"/>
+            </column>
+            <column name="user_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_room_members_user"
+                             references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="role" type="TEXT" defaultValue="member">
+                <constraints nullable="false"/>
+            </column>
+            <column name="joined_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="room_members" columnNames="room_id, user_id"
+                             constraintName="uq_room_members_room_user"/>
+        <sql>ALTER TABLE room_members ADD CONSTRAINT chk_room_members_role
+             CHECK (role IN ('admin', 'member'));</sql>
+        <createIndex tableName="room_members" indexName="idx_room_members_room_id">
+            <column name="room_id"/>
+        </createIndex>
+        <createIndex tableName="room_members" indexName="idx_room_members_user_id">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
