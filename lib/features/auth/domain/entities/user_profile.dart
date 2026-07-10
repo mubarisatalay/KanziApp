@@ -1,6 +1,7 @@
 /// User profile entity
 class UserProfile {
   final String id;
+  final String? email;
   final String username;
   final String? displayName;
   final String? avatarUrl;
@@ -9,6 +10,7 @@ class UserProfile {
 
   const UserProfile({
     required this.id,
+    this.email,
     required this.username,
     this.displayName,
     this.avatarUrl,
@@ -18,6 +20,7 @@ class UserProfile {
 
   UserProfile copyWith({
     String? id,
+    String? email,
     String? username,
     String? displayName,
     String? avatarUrl,
@@ -26,6 +29,7 @@ class UserProfile {
   }) {
     return UserProfile(
       id: id ?? this.id,
+      email: email ?? this.email,
       username: username ?? this.username,
       displayName: displayName ?? this.displayName,
       avatarUrl: avatarUrl ?? this.avatarUrl,

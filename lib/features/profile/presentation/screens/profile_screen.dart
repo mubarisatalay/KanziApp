@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/utils/validators.dart';
@@ -186,7 +185,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildProfileInfo(
     BuildContext context,
     UserProfileModel profile,
-    User? currentUser,
+    UserProfileModel? currentUser,
   ) {
     return Card(
       child: Padding(

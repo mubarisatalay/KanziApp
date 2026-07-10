@@ -14,8 +14,12 @@ dependencies:
   # State Management
   flutter_riverpod: ^2.4.0
   
-  # Supabase
-  supabase_flutter: ^2.0.0
+  # Networking (REST API client + secure token storage)
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+
+  # Cross-platform file abstraction (XFile) for web-safe image uploads
+  cross_file: ^0.3.4
   
   # Navigation
   go_router: ^12.0.0

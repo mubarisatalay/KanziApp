@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,7 +19,8 @@ class SubmitResponseSheet extends ConsumerStatefulWidget {
 
 class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
   final _textController = TextEditingController();
-  File? _selectedImage;
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
   bool _isSubmitting = false;
   String? _error;
 
@@ -40,8 +41,10 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
       );
 
       if (picked != null) {
+        final bytes = await picked.readAsBytes();
         setState(() {
-          _selectedImage = File(picked.path);
+          _selectedImage = picked;
+          _selectedImageBytes = bytes;
           _error = null;
         });
       }
@@ -115,7 +118,7 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
             textContent: _textController.text.trim().isEmpty
                 ? null
                 : _textController.text.trim(),
-            imageFile: _selectedImage,
+            image: _selectedImage,
           );
 
       if (mounted) {
@@ -238,8 +241,8 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        _selectedImage!,
+                      child: Image.memory(
+                        _selectedImageBytes!,
                         width: double.infinity,
                         height: 200,
                         fit: BoxFit.cover,
@@ -249,7 +252,10 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
                       top: 8,
                       right: 8,
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedImage = null),
+                        onTap: () => setState(() {
+                          _selectedImage = null;
+                          _selectedImageBytes = null;
+                        }),
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(

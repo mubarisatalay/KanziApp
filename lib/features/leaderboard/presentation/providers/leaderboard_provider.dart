@@ -1,12 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/providers/supabase_provider.dart';
+import '../../../../shared/providers/api_providers.dart';
 import '../../data/models/leaderboard_entry_model.dart';
 import '../../data/repositories/leaderboard_repository.dart';
 
 /// Provider for leaderboard repository
 final leaderboardRepositoryProvider = Provider<LeaderboardRepository>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return LeaderboardRepositoryImpl(client);
+  return LeaderboardRepositoryImpl(ref.watch(apiClientProvider));
 });
 
 /// Provider for today's leaderboard for a room
