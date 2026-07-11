@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../features/auth/data/models/user_profile_model.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/rooms/presentation/screens/home_screen.dart';
@@ -15,10 +15,10 @@ class RouterNotifier extends ChangeNotifier {
 
 /// Provider for GoRouter instance
 final goRouterProvider = Provider<GoRouter>((ref) {
-  // Create a notifier that will trigger router refresh on auth changes
   final notifier = RouterNotifier();
 
-  ref.listen<AsyncValue<User?>>(
+  // Refresh routing whenever the auth session changes.
+  ref.listen<AsyncValue<UserProfileModel?>>(
     authStateProvider,
     (_, __) => notifier.notify(),
   );
@@ -30,7 +30,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authStateProvider);
 
-      // If still loading, stay where we are
+      // While the session is still loading, stay put.
       if (authState.isLoading) {
         return null;
       }
@@ -39,17 +39,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isOnLoginPage = state.matchedLocation == '/login';
       final isOnHomePage = state.matchedLocation == '/home';
 
-      // Redirect to login if not authenticated and not already on login page
       if (!isAuthenticated && !isOnLoginPage) {
         return '/login';
       }
-
-      // Redirect to home if authenticated and not already on home page
       if (isAuthenticated && !isOnHomePage) {
         return '/home';
       }
-
-      // No redirect needed
       return null;
     },
     routes: [

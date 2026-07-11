@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/providers/supabase_provider.dart';
+import '../../../../shared/providers/api_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/room_model.dart';
 import '../../data/models/room_member_model.dart';
@@ -7,8 +7,7 @@ import '../../data/repositories/room_repository.dart';
 
 /// Provider for room repository
 final roomRepositoryProvider = Provider<RoomRepository>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return RoomRepositoryImpl(client);
+  return RoomRepositoryImpl(ref.watch(apiClientProvider));
 });
 
 /// Provider for user's rooms list — depends on currentUserProvider

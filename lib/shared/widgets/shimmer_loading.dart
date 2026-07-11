@@ -87,6 +87,7 @@ class RoomListShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: count,
       itemBuilder: (_, __) => const RoomCardShimmer(),

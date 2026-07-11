@@ -1,9 +1,10 @@
 import '../../domain/entities/user_profile.dart';
 
-/// User profile model for data layer
+/// User profile model for data layer. Maps the API's ProfileResponse (camelCase).
 class UserProfileModel extends UserProfile {
   const UserProfileModel({
     required super.id,
+    super.email,
     required super.username,
     super.displayName,
     super.avatarUrl,
@@ -11,57 +12,54 @@ class UserProfileModel extends UserProfile {
     required super.updatedAt,
   });
 
-  /// Create from JSON
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
     return UserProfileModel(
       id: json['id'] as String,
+      email: json['email'] as String?,
       username: json['username'] as String,
-      displayName: json['display_name'] as String?,
-      avatarUrl: json['avatar_url'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      displayName: json['displayName'] as String?,
+      avatarUrl: json['avatarUrl'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
   }
 
-  /// Convert to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'email': email,
       'username': username,
-      'display_name': displayName,
-      'avatar_url': avatarUrl,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'displayName': displayName,
+      'avatarUrl': avatarUrl,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  /// Convert to entity
-  UserProfile toEntity() {
-    return UserProfile(
-      id: id,
-      username: username,
-      displayName: displayName,
-      avatarUrl: avatarUrl,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-    );
-  }
+  UserProfile toEntity() => UserProfile(
+        id: id,
+        email: email,
+        username: username,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
 
-  /// Create from entity
-  factory UserProfileModel.fromEntity(UserProfile entity) {
-    return UserProfileModel(
-      id: entity.id,
-      username: entity.username,
-      displayName: entity.displayName,
-      avatarUrl: entity.avatarUrl,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-    );
-  }
+  factory UserProfileModel.fromEntity(UserProfile entity) => UserProfileModel(
+        id: entity.id,
+        email: entity.email,
+        username: entity.username,
+        displayName: entity.displayName,
+        avatarUrl: entity.avatarUrl,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+      );
 
   @override
   UserProfileModel copyWith({
     String? id,
+    String? email,
     String? username,
     String? displayName,
     String? avatarUrl,
@@ -70,6 +68,7 @@ class UserProfileModel extends UserProfile {
   }) {
     return UserProfileModel(
       id: id ?? this.id,
+      email: email ?? this.email,
       username: username ?? this.username,
       displayName: displayName ?? this.displayName,
       avatarUrl: avatarUrl ?? this.avatarUrl,

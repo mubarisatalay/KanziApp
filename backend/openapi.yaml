@@ -1,0 +1,447 @@
+openapi: 3.1.0
+info:
+  title: KanziApp API
+  version: "1.0.0"
+  description: >
+    Client-agnostic REST contract for the KanziApp backend (Spring Boot 4).
+    This hand-authored spec is the source of truth (contract-first). JSON field
+    naming is camelCase. All times are ISO-8601 UTC. Auth is a Bearer JWT access
+    token; obtain one from /auth/login and refresh via /auth/refresh.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local dev
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/signup:
+    post:
+      tags: [auth]
+      summary: Register a new account (sends a verification email)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        '202': { description: Created; verification email sent, content: { application/json: { schema: { $ref: '#/components/schemas/SignupResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/verify:
+    get:
+      tags: [auth]
+      summary: Verify an email address via the token from the email link
+      security: []
+      parameters:
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Verified, content: { application/json: { schema: { type: object, additionalProperties: { type: string } } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /auth/resend-verification:
+    post:
+      tags: [auth]
+      summary: Resend the verification email (no-op / opaque if unknown or verified)
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ResendRequest' } } }
+      responses:
+        '200': { description: Accepted, content: { application/json: { schema: { type: object, additionalProperties: { type: string } } } } }
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange credentials for access + refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TokenResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Email not verified, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate the refresh token for a fresh access token
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RefreshRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TokenResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke a refresh token
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RefreshRequest' } } }
+      responses:
+        '204': { description: Logged out }
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Current user's profile
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [auth]
+      summary: Update the current user's profile
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UpdateProfileRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileResponse' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /rooms:
+    get:
+      tags: [rooms]
+      summary: Rooms the current user belongs to
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RoomResponse' } } } } }
+    post:
+      tags: [rooms]
+      summary: Create a room (caller becomes admin)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateRoomRequest' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/RoomResponse' } } } }
+  /rooms/join:
+    post:
+      tags: [rooms]
+      summary: Join a room by invite code
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/JoinRoomRequest' } } }
+      responses:
+        '200': { description: Joined, content: { application/json: { schema: { $ref: '#/components/schemas/RoomResponse' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /rooms/{roomId}:
+    parameters: [ { $ref: '#/components/parameters/RoomId' } ]
+    get:
+      tags: [rooms]
+      summary: A room the caller is a member of
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/RoomResponse' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      tags: [rooms]
+      summary: Update room details (admin only)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UpdateRoomRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/RoomResponse' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [rooms]
+      summary: Delete a room (admin only)
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /rooms/{roomId}/membership:
+    parameters: [ { $ref: '#/components/parameters/RoomId' } ]
+    delete:
+      tags: [rooms]
+      summary: Leave the room (deletes the room if you are the sole member)
+      responses:
+        '204': { description: Left }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /rooms/{roomId}/members:
+    parameters: [ { $ref: '#/components/parameters/RoomId' } ]
+    get:
+      tags: [rooms]
+      summary: Members of a room
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RoomMemberResponse' } } } } }
+  /rooms/{roomId}/members/{userId}:
+    parameters:
+      - { $ref: '#/components/parameters/RoomId' }
+      - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [rooms]
+      summary: Remove a member (admin only; use /membership to leave)
+      responses:
+        '204': { description: Removed }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /rooms/{roomId}/challenges/today:
+    parameters: [ { $ref: '#/components/parameters/RoomId' } ]
+    get:
+      tags: [challenges]
+      summary: Today's challenge for a room
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ChallengeResponse' } } } }
+        '204': { description: No challenge today }
+  /rooms/{roomId}/challenges:
+    parameters: [ { $ref: '#/components/parameters/RoomId' } ]
+    get:
+      tags: [challenges]
+      summary: Challenge history (latest 30)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ChallengeResponse' } } } } }
+    post:
+      tags: [challenges]
+      summary: Create a challenge (admin only)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateChallengeRequest' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ChallengeResponse' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /challenges/{challengeId}:
+    parameters: [ { name: challengeId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [challenges]
+      summary: A challenge by id
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ChallengeResponse' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /challenges/{challengeId}/submissions:
+    parameters: [ { name: challengeId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [submissions]
+      summary: Submissions for a challenge
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/SubmissionResponse' } } } } }
+    post:
+      tags: [submissions]
+      summary: Submit a response (text and/or image)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                textContent: { type: string }
+                image: { type: string, format: binary }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/SubmissionResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /submissions/{submissionId}:
+    parameters: [ { name: submissionId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch:
+      tags: [submissions]
+      summary: Edit own submission
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                textContent: { type: string }
+                image: { type: string, format: binary }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SubmissionResponse' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [submissions]
+      summary: Delete own submission
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /submissions/{submissionId}/vote:
+    parameters: [ { name: submissionId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    put:
+      tags: [submissions]
+      summary: Cast or update a vote (1-5; not your own submission)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VoteRequest' } } }
+      responses:
+        '204': { description: Voted }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    delete:
+      tags: [submissions]
+      summary: Remove your vote
+      responses:
+        '204': { description: Removed }
+
+  /rooms/{roomId}/leaderboard/daily:
+    parameters:
+      - { $ref: '#/components/parameters/RoomId' }
+      - { name: date, in: query, required: false, schema: { type: string, format: date }, description: "Defaults to today (UTC)" }
+    get:
+      tags: [leaderboard]
+      summary: Daily leaderboard (competition ranking)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LeaderboardEntry' } } } } }
+  /rooms/{roomId}/leaderboard/overall:
+    parameters: [ { $ref: '#/components/parameters/RoomId' } ]
+    get:
+      tags: [leaderboard]
+      summary: All-time leaderboard
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LeaderboardEntry' } } } } }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    RoomId: { name: roomId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    BadRequest: { description: Validation or bad input, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Missing/invalid credentials or token, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Forbidden: { description: Not permitted (not a member / not admin / not owner), content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    NotFound: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Conflict: { description: Conflicts with existing data (duplicate), content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+    SignupRequest:
+      type: object
+      required: [email, password, username]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        username: { type: string, minLength: 3, maxLength: 30 }
+    SignupResponse:
+      type: object
+      properties:
+        message: { type: string }
+        emailConfirmationRequired: { type: boolean }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+    ResendRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    UpdateProfileRequest:
+      type: object
+      properties:
+        username: { type: string, minLength: 3, maxLength: 30 }
+        displayName: { type: string, maxLength: 50 }
+    TokenResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        expiresIn: { type: integer, description: access token TTL in seconds }
+        user: { $ref: '#/components/schemas/ProfileResponse' }
+    ProfileResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        username: { type: string }
+        displayName: { type: [string, "null"] }
+        avatarUrl: { type: [string, "null"] }
+        emailVerified: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateRoomRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 100 }
+        description: { type: [string, "null"], maxLength: 500 }
+    UpdateRoomRequest:
+      type: object
+      properties:
+        name: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 500 }
+    JoinRoomRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+    RoomResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        code: { type: string }
+        createdBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        memberCount: { type: integer }
+        currentUserRole: { type: [string, "null"], enum: [admin, member, null] }
+    RoomMemberResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        role: { type: string, enum: [admin, member] }
+        joinedAt: { type: string, format: date-time }
+        username: { type: [string, "null"] }
+        displayName: { type: [string, "null"] }
+        avatarUrl: { type: [string, "null"] }
+    CreateChallengeRequest:
+      type: object
+      required: [challengeText, challengeType, challengeDate]
+      properties:
+        challengeText: { type: string }
+        challengeType: { type: string, enum: [photo, text, photo_text] }
+        challengeDate: { type: string, format: date }
+    ChallengeResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        challengeText: { type: string }
+        challengeType: { type: string, enum: [photo, text, photo_text] }
+        challengeDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+        hasSubmitted: { type: boolean }
+        submissionCount: { type: integer }
+    SubmissionResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        challengeId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        imageUrl: { type: [string, "null"] }
+        textContent: { type: [string, "null"] }
+        submittedAt: { type: string, format: date-time }
+        username: { type: [string, "null"] }
+        displayName: { type: [string, "null"] }
+        avatarUrl: { type: [string, "null"] }
+        totalVotes: { type: integer }
+        voteCount: { type: integer }
+        currentUserVote: { type: [integer, "null"], minimum: 1, maximum: 5 }
+        ownSubmission: { type: boolean }
+    VoteRequest:
+      type: object
+      required: [voteValue]
+      properties:
+        voteValue: { type: integer, minimum: 1, maximum: 5 }
+    LeaderboardEntry:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        username: { type: string }
+        displayName: { type: [string, "null"] }
+        avatarUrl: { type: [string, "null"] }
+        totalVotes: { type: integer }
+        submissionCount: { type: integer }
+        rank: { type: integer }
