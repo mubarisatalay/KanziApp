@@ -5,7 +5,7 @@ class SubmissionModel extends Submission {
   const SubmissionModel({
     required super.id,
     required super.challengeId,
-    required super.userId,
+    super.userId,
     required super.roomId,
     super.imageUrl,
     super.textContent,
@@ -16,6 +16,8 @@ class SubmissionModel extends Submission {
     super.voteCount,
     super.averageVote,
     super.currentUserVote,
+    super.isOwn,
+    super.anonymous,
   });
 
   factory SubmissionModel.fromJson(Map<String, dynamic> json) {
@@ -24,7 +26,8 @@ class SubmissionModel extends Submission {
     return SubmissionModel(
       id: json['id'] as String,
       challengeId: json['challengeId'] as String,
-      userId: json['userId'] as String,
+      // Null while the author is anonymized (blind challenge, pre-reveal).
+      userId: json['userId'] as String?,
       roomId: json['roomId'] as String,
       imageUrl: json['imageUrl'] as String?,
       textContent: json['textContent'] as String?,
@@ -35,6 +38,8 @@ class SubmissionModel extends Submission {
       voteCount: voteCount,
       averageVote: voteCount > 0 ? totalVotes / voteCount : 0.0,
       currentUserVote: (json['currentUserVote'] as num?)?.toInt(),
+      isOwn: json['ownSubmission'] as bool? ?? false,
+      anonymous: json['anonymous'] as bool? ?? false,
     );
   }
 }

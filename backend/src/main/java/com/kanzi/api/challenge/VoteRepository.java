@@ -13,5 +13,7 @@ public interface VoteRepository extends JpaRepository<Vote, UUID> {
 
     List<Vote> findBySubmissionIdIn(Collection<UUID> submissionIds);
 
+    List<Vote> findBySubmissionIdInAndVoterId(Collection<UUID> submissionIds, UUID voterId);
+
     void deleteBySubmissionIdAndVoterId(UUID submissionId, UUID voterId);
 }

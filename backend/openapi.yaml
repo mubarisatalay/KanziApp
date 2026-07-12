@@ -206,6 +206,16 @@ paths:
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ChallengeResponse' } } } }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /challenges/{challengeId}/reveal:
+    parameters: [ { name: challengeId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [challenges]
+      summary: Ranked ceremony results (only after reveal)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/RevealResponse' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Results are not revealed yet, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
   /challenges/{challengeId}/submissions:
     parameters: [ { name: challengeId, in: path, required: true, schema: { type: string, format: uuid } } ]
     get:
@@ -228,7 +238,7 @@ paths:
       responses:
         '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/SubmissionResponse' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409': { description: Already submitted, or submissions closed (challenge revealed), content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
   /submissions/{submissionId}:
     parameters: [ { name: submissionId, in: path, required: true, schema: { type: string, format: uuid } } ]
     patch:
@@ -246,12 +256,14 @@ paths:
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SubmissionResponse' } } } }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Submissions closed (challenge revealed), content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
     delete:
       tags: [submissions]
       summary: Delete own submission
       responses:
         '204': { description: Deleted }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Submissions closed (challenge revealed), content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
   /submissions/{submissionId}/vote:
     parameters: [ { name: submissionId, in: path, required: true, schema: { type: string, format: uuid } } ]
     put:
@@ -263,11 +275,13 @@ paths:
       responses:
         '204': { description: Voted }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: Voting closed (challenge revealed), content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
     delete:
       tags: [submissions]
       summary: Remove your vote
       responses:
         '204': { description: Removed }
+        '409': { description: Voting closed (challenge revealed), content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
 
   /rooms/{roomId}/leaderboard/daily:
     parameters:
@@ -402,6 +416,7 @@ components:
         challengeText: { type: string }
         challengeType: { type: string, enum: [photo, text, photo_text] }
         challengeDate: { type: string, format: date }
+        blind: { type: [boolean, "null"], description: "Hide submission authors until reveal (opt-in; content stays visible)" }
     ChallengeResponse:
       type: object
       properties:
@@ -411,14 +426,22 @@ components:
         challengeType: { type: string, enum: [photo, text, photo_text] }
         challengeDate: { type: string, format: date }
         createdAt: { type: string, format: date-time }
+        revealAt: { type: string, format: date-time, description: "Instant results open; votes/submissions close" }
+        revealed: { type: boolean, description: "Time-derived (now >= revealAt)" }
+        blind: { type: boolean }
         hasSubmitted: { type: boolean }
         submissionCount: { type: integer }
     SubmissionResponse:
+      description: >
+        Pre-reveal, vote aggregates (totalVotes/voteCount) are 0 for everyone; on blind
+        challenges others' author fields (userId/username/displayName/avatarUrl) are null and
+        `anonymous` is true — content (imageUrl/textContent) is always visible. Pre-reveal on
+        blind challenges the list order is a stable shuffle, not submission order.
       type: object
       properties:
         id: { type: string, format: uuid }
         challengeId: { type: string, format: uuid }
-        userId: { type: string, format: uuid }
+        userId: { type: [string, "null"], format: uuid }
         roomId: { type: string, format: uuid }
         imageUrl: { type: [string, "null"] }
         textContent: { type: [string, "null"] }
@@ -430,6 +453,34 @@ components:
         voteCount: { type: integer }
         currentUserVote: { type: [integer, "null"], minimum: 1, maximum: 5 }
         ownSubmission: { type: boolean }
+        anonymous: { type: boolean, description: "True when this entry's author is hidden (blind challenge, pre-reveal)" }
+    RevealEntry:
+      type: object
+      properties:
+        rank: { type: integer, description: "Competition ranking (1, 2, 2, 4)" }
+        submissionId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        username: { type: [string, "null"] }
+        displayName: { type: [string, "null"] }
+        avatarUrl: { type: [string, "null"] }
+        imageUrl: { type: [string, "null"] }
+        textContent: { type: [string, "null"] }
+        submittedAt: { type: string, format: date-time }
+        avgScore: { type: number, format: double }
+        voteCount: { type: integer }
+        totalVotes: { type: integer }
+    RevealResponse:
+      type: object
+      properties:
+        challengeId: { type: string, format: uuid }
+        challengeText: { type: string }
+        challengeType: { type: string, enum: [photo, text, photo_text] }
+        challengeDate: { type: string, format: date }
+        revealAt: { type: string, format: date-time }
+        entries: { type: array, items: { $ref: '#/components/schemas/RevealEntry' } }
+        winner: { oneOf: [ { $ref: '#/components/schemas/RevealEntry' }, { type: "null" } ], description: "First entry; null when nobody submitted" }
+        currentUserRank: { type: [integer, "null"], description: "Null when the caller did not submit" }
+        totalSubmissions: { type: integer }
     VoteRequest:
       type: object
       required: [voteValue]

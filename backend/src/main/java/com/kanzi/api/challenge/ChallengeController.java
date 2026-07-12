@@ -2,6 +2,7 @@ package com.kanzi.api.challenge;
 
 import com.kanzi.api.challenge.dto.ChallengeResponse;
 import com.kanzi.api.challenge.dto.CreateChallengeRequest;
+import com.kanzi.api.challenge.dto.RevealResponse;
 import com.kanzi.api.challenge.dto.SubmissionResponse;
 import com.kanzi.api.common.CurrentUserId;
 import jakarta.validation.Valid;
@@ -46,6 +47,11 @@ public class ChallengeController {
     @GetMapping("/challenges/{challengeId}")
     public ChallengeResponse getChallenge(@CurrentUserId UUID userId, @PathVariable UUID challengeId) {
         return challenges.getChallengeById(challengeId, userId);
+    }
+
+    @GetMapping("/challenges/{challengeId}/reveal")
+    public RevealResponse getRevealResults(@CurrentUserId UUID userId, @PathVariable UUID challengeId) {
+        return challenges.getRevealResults(challengeId, userId);
     }
 
     @GetMapping("/challenges/{challengeId}/submissions")

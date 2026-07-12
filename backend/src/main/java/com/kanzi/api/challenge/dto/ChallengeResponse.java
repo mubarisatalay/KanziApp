@@ -13,10 +13,15 @@ public record ChallengeResponse(
         String challengeType,
         LocalDate challengeDate,
         Instant createdAt,
+        Instant revealAt,
+        boolean revealed,
+        boolean blind,
         boolean hasSubmitted,
         int submissionCount
 ) {
-    public static ChallengeResponse from(Challenge challenge, boolean hasSubmitted, int submissionCount) {
+    /** {@code revealed} must be the time-derived value (RevealPolicy), not the entity's lagging flag. */
+    public static ChallengeResponse from(Challenge challenge, boolean revealed,
+                                         boolean hasSubmitted, int submissionCount) {
         return new ChallengeResponse(
                 challenge.getId(),
                 challenge.getRoomId(),
@@ -24,6 +29,9 @@ public record ChallengeResponse(
                 challenge.getChallengeType(),
                 challenge.getChallengeDate(),
                 challenge.getCreatedAt(),
+                challenge.getRevealAt(),
+                revealed,
+                challenge.isBlind(),
                 hasSubmitted,
                 submissionCount
         );

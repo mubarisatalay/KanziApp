@@ -7,6 +7,7 @@ import com.kanzi.api.challenge.SubmissionRepository;
 import com.kanzi.api.challenge.Vote;
 import com.kanzi.api.challenge.VoteRepository;
 import com.kanzi.api.common.AuthorizationService;
+import com.kanzi.api.common.Rankings;
 import com.kanzi.api.leaderboard.dto.LeaderboardEntry;
 import com.kanzi.api.user.User;
 import com.kanzi.api.user.UserRepository;
@@ -81,15 +82,10 @@ public class LeaderboardService {
                 .sorted(Comparator.comparingInt((Aggregate a) -> a.totalVotes).reversed())
                 .toList();
 
+        int[] ranks = Rankings.competitionRanks(sorted, (a, b) -> a.totalVotes == b.totalVotes);
         List<LeaderboardEntry> entries = new ArrayList<>(sorted.size());
-        int rank = 0;
-        int previousVotes = Integer.MIN_VALUE;
         for (int i = 0; i < sorted.size(); i++) {
             Aggregate a = sorted.get(i);
-            if (a.totalVotes != previousVotes) {
-                rank = i + 1; // competition ranking: 1, 2, 2, 4, ...
-                previousVotes = a.totalVotes;
-            }
             User u = usersById.get(a.userId);
             entries.add(new LeaderboardEntry(
                     a.userId,
@@ -98,7 +94,7 @@ public class LeaderboardService {
                     u != null ? u.getAvatarUrl() : null,
                     a.totalVotes,
                     a.submissionCount,
-                    rank));
+                    ranks[i]));
         }
         return entries;
     }

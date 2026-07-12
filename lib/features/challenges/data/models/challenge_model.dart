@@ -9,6 +9,9 @@ class ChallengeModel extends Challenge {
     required super.challengeType,
     required super.challengeDate,
     required super.createdAt,
+    super.revealAt,
+    super.revealed,
+    super.blind,
     super.submissionCount,
     super.hasUserSubmitted,
   });
@@ -21,6 +24,12 @@ class ChallengeModel extends Challenge {
       challengeType: ChallengeType.fromString(json['challengeType'] as String),
       challengeDate: DateTime.parse(json['challengeDate'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      revealAt: json['revealAt'] != null
+          ? DateTime.parse(json['revealAt'] as String)
+          : null,
+      // Old payloads without the field behave like the pre-reveal feature: always open.
+      revealed: json['revealed'] as bool? ?? true,
+      blind: json['blind'] as bool? ?? false,
       submissionCount: (json['submissionCount'] as num?)?.toInt() ?? 0,
       hasUserSubmitted: json['hasSubmitted'] as bool? ?? false,
     );

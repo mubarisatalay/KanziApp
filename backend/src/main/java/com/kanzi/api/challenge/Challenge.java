@@ -33,6 +33,18 @@ public class Challenge {
     @Column(name = "challenge_date", nullable = false)
     private LocalDate challengeDate;
 
+    /** Instant at which results open and votes/submissions close. Gate on this, not on {@code revealed}. */
+    @Column(name = "reveal_at", nullable = false)
+    private Instant revealAt;
+
+    /** Durable event marker flipped by {@link RevealJob}; may lag reveal_at by up to a minute. */
+    @Column(name = "revealed", nullable = false)
+    private boolean revealed;
+
+    /** Blind challenges hide submission authors (never the content) until reveal. */
+    @Column(name = "blind", nullable = false)
+    private boolean blind;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

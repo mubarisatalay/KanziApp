@@ -9,5 +9,7 @@
     <include file="db/changelog/002-rooms-and-members.xml"/>
     <include file="db/changelog/003-challenges-submissions-votes.xml"/>
     <include file="db/changelog/004-refresh-tokens.xml"/>
+    <include file="db/changelog/005-challenge-reveal.xml"/>
+    <include file="db/changelog/006-challenge-pool.xml"/>
 
 </databaseChangeLog>
