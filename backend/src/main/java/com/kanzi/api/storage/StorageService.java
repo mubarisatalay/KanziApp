@@ -22,11 +22,13 @@ public class StorageService {
         this.props = props;
     }
 
-    /** Uploads an image and returns its public URL. Same key scheme as the old Supabase bucket. */
-    public String uploadChallengeImage(MultipartFile file, UUID roomId, UUID challengeId, UUID userId) {
+    /**
+     * Uploads an image and returns its public URL. The key is a random UUID: blind challenges
+     * serve image URLs while the author is hidden, so the key must not identify the uploader.
+     */
+    public String uploadChallengeImage(MultipartFile file, UUID roomId, UUID challengeId) {
         String extension = extensionOf(file.getOriginalFilename());
-        String key = "%s/%s/%s_%d.%s".formatted(
-                roomId, challengeId, userId, System.currentTimeMillis(), extension);
+        String key = "%s/%s/%s.%s".formatted(roomId, challengeId, UUID.randomUUID(), extension);
 
         AppProperties.Storage storage = props.storage();
         try {

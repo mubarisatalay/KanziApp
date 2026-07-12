@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+      Blind day + reveal: every challenge gets a reveal moment (votes/submissions close,
+      sealed results open). `blind` additionally hides submission authors until reveal.
+      Rows created before this feature are treated as already revealed and never blind.
+    -->
+    <changeSet id="005-add-challenge-reveal" author="kaan.kahveci">
+        <addColumn tableName="challenges">
+            <column name="reveal_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="revealed" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="blind" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            UPDATE challenges
+            SET reveal_at = ((challenge_date + time '21:00') AT TIME ZONE 'Europe/Istanbul'),
+                revealed  = true;
+        </sql>
+        <addNotNullConstraint tableName="challenges" columnName="reveal_at"
+                              columnDataType="TIMESTAMP WITH TIME ZONE"/>
+        <!-- Partial index for the RevealJob scan; raw SQL since Liquibase XML has no partial-index support. -->
+        <sql>CREATE INDEX idx_challenges_unrevealed ON challenges (reveal_at) WHERE NOT revealed;</sql>
+        <rollback>
+            <sql>DROP INDEX IF EXISTS idx_challenges_unrevealed;</sql>
+            <dropColumn tableName="challenges" columnName="reveal_at"/>
+            <dropColumn tableName="challenges" columnName="revealed"/>
+            <dropColumn tableName="challenges" columnName="blind"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

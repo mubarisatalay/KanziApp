@@ -67,3 +67,7 @@ app:
     secret-key: ${S3_SECRET_KEY:minioadmin}
   daily-challenge:
     cron: ${DAILY_CHALLENGE_CRON:0 0 0 * * *}
+  # When each day's results open (votes/submissions close): local wall-clock time in `zone`.
+  reveal:
+    time: ${REVEAL_TIME:21:00}
+    zone: ${REVEAL_ZONE:Europe/Istanbul}

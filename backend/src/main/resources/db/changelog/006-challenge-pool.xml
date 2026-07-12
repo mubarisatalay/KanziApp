@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+      App-curated challenge prompts, moved out of code (was a hardcoded list in
+      DailyChallengeJob). The daily job draws a random active row per room; editing copy,
+      retiring a prompt (active = false), or adding new ones is now a data change, not a
+      deployment. User-submitted room pools (dare pool feature) will layer on top as a
+      separate, room-scoped source.
+    -->
+    <changeSet id="006-create-challenge-pool" author="kaan.kahveci">
+        <createTable tableName="pool_challenges">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="challenge_text" type="TEXT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_pool_challenges_text"/>
+            </column>
+            <column name="challenge_type" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="blind" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>ALTER TABLE pool_challenges ADD CONSTRAINT chk_pool_challenges_type
+             CHECK (challenge_type IN ('photo', 'text', 'photo_text'));</sql>
+    </changeSet>
+
+    <!--
+      Seed: the former hardcoded pool, unchanged copy. blind = authors hidden until reveal;
+      only prompts whose content doesn't identify the author (text, objects, scenery) qualify —
+      prompts putting the author in the photo (selfies, cringe-photo) don't.
+    -->
+    <changeSet id="006-seed-challenge-pool" author="kaan.kahveci">
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Take the most cringe photo today."/>
+            <column name="challenge_type" value="photo"/>
+            <column name="blind" valueBoolean="false"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <!-- The old hardcoded TYPES list had this one misaligned as 'text' — a photo
+                 prompt typed text; exactly the parallel-list bug this table eliminates. -->
+            <column name="challenge_text" value="Take a photo with the youngest person you saw today."/>
+            <column name="challenge_type" value="photo"/>
+            <column name="blind" valueBoolean="false"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Share the most meaningful proverb you know."/>
+            <column name="challenge_type" value="photo_text"/>
+            <column name="blind" valueBoolean="true"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Capture the most beautiful sunset you see."/>
+            <column name="challenge_type" value="photo"/>
+            <column name="blind" valueBoolean="true"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Show us your weirdest possession."/>
+            <column name="challenge_type" value="photo"/>
+            <column name="blind" valueBoolean="true"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Take a photo of something that made you smile today."/>
+            <column name="challenge_type" value="photo"/>
+            <column name="blind" valueBoolean="true"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Share a childhood memory in one sentence."/>
+            <column name="challenge_type" value="text"/>
+            <column name="blind" valueBoolean="true"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Take a photo of your view right now."/>
+            <column name="challenge_type" value="photo"/>
+            <column name="blind" valueBoolean="true"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="What is your biggest fear? Explain in one sentence."/>
+            <column name="challenge_type" value="text"/>
+            <column name="blind" valueBoolean="true"/>
+        </insert>
+        <insert tableName="pool_challenges">
+            <column name="challenge_text" value="Take a selfie with a stranger (with permission!)."/>
+            <column name="challenge_type" value="photo"/>
+            <column name="blind" valueBoolean="false"/>
+        </insert>
+        <rollback>
+            <sql>DELETE FROM pool_challenges;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

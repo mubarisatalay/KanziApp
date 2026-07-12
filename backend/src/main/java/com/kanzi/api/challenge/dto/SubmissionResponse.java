@@ -17,6 +17,7 @@ public record SubmissionResponse(
         int totalVotes,
         int voteCount,
         Integer currentUserVote,
-        boolean ownSubmission
+        boolean ownSubmission,
+        boolean anonymous
 ) {
 }
