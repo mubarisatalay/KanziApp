@@ -88,7 +88,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
                           .map((s) => SubmissionCard(
                                 submission: s,
                                 currentUserId: currentUser?.id ?? '',
-                                isActive: challenge.isToday,
+                                isActive: challenge.isActive,
                               ))
                           .toList(),
                     );
@@ -105,7 +105,7 @@ class ChallengeDetailScreen extends ConsumerWidget {
           ),
         ),
         // FAB to submit if challenge is active and user hasn't submitted
-        floatingActionButton: challenge.isToday && !challenge.hasUserSubmitted
+        floatingActionButton: challenge.isActive && !challenge.hasUserSubmitted
             ? FloatingActionButton.extended(
                 onPressed: () {
                   HapticFeedback.mediumImpact();
@@ -201,7 +201,7 @@ class _ChallengeInfoCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: challenge.isToday
+                    color: challenge.isActive
                         ? AppColors.success.withAlpha(25)
                         : AppColors.textTertiary.withAlpha(25),
                     borderRadius: BorderRadius.circular(12),
@@ -210,21 +210,21 @@ class _ChallengeInfoCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        challenge.isToday
+                        challenge.isActive
                             ? Icons.play_circle_outline
                             : Icons.check_circle_outline,
                         size: 14,
-                        color: challenge.isToday
+                        color: challenge.isActive
                             ? AppColors.success
                             : AppColors.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        challenge.isToday ? 'Active' : 'Completed',
+                        challenge.isActive ? 'Active' : 'Completed',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: challenge.isToday
+                          color: challenge.isActive
                               ? AppColors.success
                               : AppColors.textSecondary,
                         ),

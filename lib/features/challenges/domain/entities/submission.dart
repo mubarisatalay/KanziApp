@@ -2,7 +2,9 @@
 class Submission {
   final String id;
   final String challengeId;
-  final String userId;
+
+  /// Null while the author is anonymized (blind challenge, pre-reveal).
+  final String? userId;
   final String roomId;
   final String? imageUrl;
   final String? textContent;
@@ -18,10 +20,16 @@ class Submission {
   final double averageVote;
   final int? currentUserVote; // null if current user hasn't voted
 
+  /// Whether this submission belongs to the current user (server-derived).
+  final bool isOwn;
+
+  /// True when the author is hidden (blind challenge, before reveal).
+  final bool anonymous;
+
   const Submission({
     required this.id,
     required this.challengeId,
-    required this.userId,
+    this.userId,
     required this.roomId,
     this.imageUrl,
     this.textContent,
@@ -32,6 +40,8 @@ class Submission {
     this.voteCount = 0,
     this.averageVote = 0.0,
     this.currentUserVote,
+    this.isOwn = false,
+    this.anonymous = false,
   });
 
   /// Whether the current user has voted on this submission
@@ -51,6 +61,8 @@ class Submission {
     int? voteCount,
     double? averageVote,
     int? currentUserVote,
+    bool? isOwn,
+    bool? anonymous,
   }) {
     return Submission(
       id: id ?? this.id,
@@ -66,6 +78,8 @@ class Submission {
       voteCount: voteCount ?? this.voteCount,
       averageVote: averageVote ?? this.averageVote,
       currentUserVote: currentUserVote ?? this.currentUserVote,
+      isOwn: isOwn ?? this.isOwn,
+      anonymous: anonymous ?? this.anonymous,
     );
   }
 

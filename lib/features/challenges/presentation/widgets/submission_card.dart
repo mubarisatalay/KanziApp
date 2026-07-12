@@ -20,7 +20,8 @@ class SubmissionCard extends ConsumerWidget {
     this.isActive = true,
   });
 
-  bool get _isOwnSubmission => submission.userId == currentUserId;
+  // Server-derived: userId is null on anonymized entries, so it can't be compared locally.
+  bool get _isOwnSubmission => submission.isOwn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -65,16 +66,19 @@ class SubmissionCard extends ConsumerWidget {
                       backgroundColor: _isOwnSubmission
                           ? AppColors.primary.withAlpha(25)
                           : AppColors.accent.withAlpha(25),
-                      child: Text(
-                        (submission.username ?? '?')[0].toUpperCase(),
-                        style: TextStyle(
-                          color: _isOwnSubmission
-                              ? AppColors.primary
-                              : AppColors.accent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
+                      child: submission.anonymous
+                          ? const Icon(Icons.lock_outline_rounded,
+                              size: 16, color: AppColors.accent)
+                          : Text(
+                              (submission.username ?? '?')[0].toUpperCase(),
+                              style: TextStyle(
+                                color: _isOwnSubmission
+                                    ? AppColors.primary
+                                    : AppColors.accent,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -82,9 +86,11 @@ class SubmissionCard extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            submission.displayName ??
-                                submission.username ??
-                                'Unknown',
+                            submission.anonymous
+                                ? 'Gizli'
+                                : submission.displayName ??
+                                    submission.username ??
+                                    'Unknown',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleSmall

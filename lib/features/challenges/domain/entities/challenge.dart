@@ -7,6 +7,15 @@ class Challenge {
   final DateTime challengeDate;
   final DateTime createdAt;
 
+  /// When results open and votes/submissions close (null for pre-migration payloads).
+  final DateTime? revealAt;
+
+  /// Whether the reveal moment has passed (server-derived).
+  final bool revealed;
+
+  /// Whether submission authors are hidden until reveal.
+  final bool blind;
+
   /// Additional computed fields
   final int submissionCount;
   final bool hasUserSubmitted;
@@ -18,6 +27,9 @@ class Challenge {
     required this.challengeType,
     required this.challengeDate,
     required this.createdAt,
+    this.revealAt,
+    this.revealed = true,
+    this.blind = false,
     this.submissionCount = 0,
     this.hasUserSubmitted = false,
   });
@@ -30,8 +42,15 @@ class Challenge {
         challengeDate.day == now.day;
   }
 
-  /// Whether this challenge is still active (today)
-  bool get isActive => isToday;
+  /// Whether the reveal moment has passed, derived live from [revealAt] so an
+  /// open screen flips at 21:00 without a refetch. Falls back to the server
+  /// snapshot for old payloads without the field.
+  bool get isRevealedNow =>
+      revealAt != null ? !DateTime.now().isBefore(revealAt!) : revealed;
+
+  /// Whether this challenge still accepts submissions/votes (today and not yet
+  /// revealed — the server returns 409 for either after reveal).
+  bool get isActive => isToday && !isRevealedNow;
 
   /// Whether this challenge is in the past
   bool get isPast => challengeDate.isBefore(DateTime.now().copyWith(
@@ -48,6 +67,9 @@ class Challenge {
     ChallengeType? challengeType,
     DateTime? challengeDate,
     DateTime? createdAt,
+    DateTime? revealAt,
+    bool? revealed,
+    bool? blind,
     int? submissionCount,
     bool? hasUserSubmitted,
   }) {
@@ -58,6 +80,9 @@ class Challenge {
       challengeType: challengeType ?? this.challengeType,
       challengeDate: challengeDate ?? this.challengeDate,
       createdAt: createdAt ?? this.createdAt,
+      revealAt: revealAt ?? this.revealAt,
+      revealed: revealed ?? this.revealed,
+      blind: blind ?? this.blind,
       submissionCount: submissionCount ?? this.submissionCount,
       hasUserSubmitted: hasUserSubmitted ?? this.hasUserSubmitted,
     );
