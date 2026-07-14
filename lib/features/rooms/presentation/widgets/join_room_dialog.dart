@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/kor/kor.dart';
 import '../providers/room_provider.dart';
+import 'create_room_dialog.dart' show KorDialogField;
 
-/// Dialog for joining a room by invite code
+/// Join-room dialog — KOR dark surface, mono invite-code field.
 class JoinRoomDialog extends ConsumerStatefulWidget {
   const JoinRoomDialog({super.key});
 
@@ -39,9 +43,7 @@ class _JoinRoomDialogState extends ConsumerState<JoinRoomDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Joined "${room.name}" successfully!'),
-            backgroundColor: AppColors.success,
-          ),
+              content: Text(AppLocalizations.of(context).joinedRoom(room.name))),
         );
       }
     } catch (e) {
@@ -56,101 +58,87 @@ class _JoinRoomDialogState extends ConsumerState<JoinRoomDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withAlpha(25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.login, color: AppColors.accent),
+    final l10n = AppLocalizations.of(context);
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.joinRoomTitle,
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              if (_error != null) ...[
+                GlassCard.coral(
+                  radius: 14,
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    _error!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.primaryText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              KorDialogField(
+                label: l10n.labelInviteCodeUpper,
+                controller: _codeController,
+                enabled: !_isLoading,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.characters,
+                textInputAction: TextInputAction.done,
+                style: AppTheme.mono(
+                  fontSize: 19,
+                  letterSpacing: 5,
+                  color: AppColors.primaryText,
+                ),
+                onFieldSubmitted: (_) => _joinRoom(),
+                validator: (value) {
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return l10n.inviteCodeRequired;
+                  if (v.length != 6) return l10n.inviteCodeLength;
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.inviteCodeHint,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+              ),
+              const SizedBox(height: 20),
+              CoralButton(
+                label: l10n.join,
+                loading: _isLoading,
+                onPressed: _isLoading ? null : _joinRoom,
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: GestureDetector(
+                  onTap: _isLoading ? null : () => Navigator.pop(context),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Text(
+                      l10n.cancel,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textTertiary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          const Text('Join Room'),
-        ],
-      ),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_error != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withAlpha(25),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.error),
-                ),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(
-                    color: AppColors.error,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            TextFormField(
-              controller: _codeController,
-              decoration: const InputDecoration(
-                labelText: 'Room Code',
-                hintText: 'e.g., ABC123',
-                prefixIcon: Icon(Icons.tag),
-              ),
-              enabled: !_isLoading,
-              textCapitalization: TextCapitalization.characters,
-              textInputAction: TextInputAction.done,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 20,
-                letterSpacing: 4,
-              ),
-              textAlign: TextAlign.center,
-              maxLength: 6,
-              onFieldSubmitted: (_) => _joinRoom(),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Room code is required';
-                }
-                if (value.trim().length != 6) {
-                  return 'Room code must be 6 characters';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Ask the room admin for the 6-character invite code.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _joinRoom,
-          child: _isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Join'),
-        ),
-      ],
     );
   }
 }

@@ -1,51 +1,36 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/kor/kor.dart';
 
-/// Splash screen shown while initializing app
+/// Splash — KOR: flat charcoal, wordmark, quiet spinner. No hero graphics.
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: AppColors.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // App logo placeholder (you can replace with actual logo)
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Icon(
-                Icons.emoji_events,
-                size: 64,
+            const KorWordmark(size: 44),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context).taglineShort,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+            ),
+            const SizedBox(height: 40),
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
                 color: AppColors.primary,
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              AppConstants.appName,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Challenge Accepted!',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white70,
-                  ),
-            ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
             ),
           ],
         ),

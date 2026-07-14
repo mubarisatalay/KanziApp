@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/entities/challenge.dart';
 import '../models/challenge_model.dart';
+import '../models/reveal_result_model.dart';
 import '../models/submission_model.dart';
 
 class ChallengeRepositoryException implements Exception {
@@ -25,6 +26,7 @@ abstract class ChallengeRepository {
     required DateTime challengeDate,
   });
   Future<List<SubmissionModel>> getSubmissions(String challengeId);
+  Future<RevealResultModel> getRevealResults(String challengeId);
   Future<SubmissionModel> submitResponse({
     required String challengeId,
     required String roomId,
@@ -111,6 +113,18 @@ class ChallengeRepositoryImpl implements ChallengeRepository {
           .toList();
     } on DioException catch (e) {
       throw ChallengeRepositoryException(messageFromDioError(e, 'Failed to load submissions'));
+    }
+  }
+
+  @override
+  Future<RevealResultModel> getRevealResults(String challengeId) async {
+    try {
+      final res = await _dio.get('/challenges/$challengeId/reveal');
+      return RevealResultModel.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      // 409 = not revealed yet; surfaces as a normal repository error.
+      throw ChallengeRepositoryException(
+          messageFromDioError(e, 'Failed to load reveal results'));
     }
   }
 

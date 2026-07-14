@@ -28,7 +28,7 @@ class ChallengeHistoryScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.history,
+                    const Icon(Icons.history,
                         size: 64, color: AppColors.textTertiary),
                     const SizedBox(height: 16),
                     Text(

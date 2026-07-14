@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/kor/kor.dart';
 import '../../domain/entities/challenge.dart';
 import '../providers/challenge_provider.dart';
 
-/// Bottom sheet for submitting a challenge response
+/// Submit-response sheet — KOR dark surface, glass fields, coral CTA.
 class SubmitResponseSheet extends ConsumerStatefulWidget {
   final Challenge challenge;
 
@@ -49,37 +51,47 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
         });
       }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to pick image. Please try again.';
-      });
+      if (mounted) {
+        setState(() {
+          _error = AppLocalizations.of(context).pickImageFailed;
+        });
+      }
     }
   }
 
   void _showImageSourcePicker() {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt_outlined,
-                    color: AppColors.primary),
-                title: const Text('Take Photo'),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              _SourceRow(
+                icon: Icons.camera_alt_outlined,
+                label: l10n.takePhoto,
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined,
-                    color: AppColors.primary),
-                title: const Text('Choose from Gallery'),
+              const SizedBox(height: 10),
+              _SourceRow(
+                icon: Icons.photo_library_outlined,
+                label: l10n.chooseFromGallery,
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
@@ -93,16 +105,16 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
   }
 
   Future<void> _submit() async {
-    // Validate based on challenge type
+    final l10n = AppLocalizations.of(context);
     final type = widget.challenge.challengeType;
 
     if (type.requiresPhoto && _selectedImage == null) {
-      setState(() => _error = 'Please add a photo for this challenge.');
+      setState(() => _error = l10n.photoRequiredError);
       return;
     }
 
     if (type.requiresText && _textController.text.trim().isEmpty) {
-      setState(() => _error = 'Please add text for this challenge.');
+      setState(() => _error = l10n.textRequiredError);
       return;
     }
 
@@ -124,10 +136,7 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Response submitted!'),
-            backgroundColor: AppColors.success,
-          ),
+          SnackBar(content: Text(l10n.submittedToast)),
         );
       }
     } catch (e) {
@@ -142,21 +151,21 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final type = widget.challenge.challengeType;
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        left: 20,
+        right: 20,
+        top: 14,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle
             Center(
               child: Container(
                 width: 40,
@@ -167,80 +176,52 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
 
-            // Title
-            Text(
-              'Submit Response',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Response type: ${type.label}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-            const SizedBox(height: 16),
+            Text(l10n.submitSheetTitle,
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 14),
 
-            // Challenge text reminder
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.primary.withAlpha(50)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.emoji_events_outlined,
-                      color: AppColors.primary, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.challenge.challengeText,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.primary,
-                            fontStyle: FontStyle.italic,
-                          ),
-                    ),
-                  ),
-                ],
+            // Challenge reminder.
+            GlassCard.coral(
+              radius: 16,
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                widget.challenge.challengeText,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(color: AppColors.primaryText, height: 1.35),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // Error
-            if (_error != null)
-              Container(
-                width: double.infinity,
+            if (_error != null) ...[
+              GlassCard.coral(
+                radius: 14,
                 padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withAlpha(25),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.error),
-                ),
                 child: Text(
                   _error!,
-                  style: const TextStyle(color: AppColors.error, fontSize: 13),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.primaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ),
+              const SizedBox(height: 12),
+            ],
 
-            // Photo section
+            // Photo picker.
             if (type.requiresPhoto) ...[
-              Text(
-                'Photo${type == ChallengeType.photo ? ' (required)' : ''}',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
+              SectionLabel(type == ChallengeType.photo
+                  ? l10n.labelPhotoUpper
+                  : l10n.labelPhotoRequiredUpper),
               const SizedBox(height: 8),
               if (_selectedImage != null)
                 Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       child: Image.memory(
                         _selectedImageBytes!,
                         width: double.infinity,
@@ -257,15 +238,15 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
                           _selectedImageBytes = null;
                         }),
                         child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
                             color: Colors.black54,
-                            borderRadius: BorderRadius.circular(20),
+                            shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.close,
-                            color: Colors.white,
-                            size: 20,
+                            color: AppColors.textPrimary,
+                            size: 18,
                           ),
                         ),
                       ),
@@ -273,111 +254,114 @@ class _SubmitResponseSheetState extends ConsumerState<SubmitResponseSheet> {
                   ],
                 )
               else
-                InkWell(
+                PressableScale(
                   onTap: _isSubmitting ? null : _showImageSourcePicker,
-                  borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: double.infinity,
                     height: 150,
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.divider,
-                        style: BorderStyle.solid,
-                      ),
+                      color: AppColors.surfaceGlass,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.glassBorder),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.add_a_photo_outlined,
-                          size: 40,
+                          size: 30,
                           color: AppColors.textTertiary,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Tap to add photo',
-                          style: TextStyle(color: AppColors.textTertiary),
+                          l10n.choosePhoto,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textTertiary,
+                                  ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
             ],
 
-            // Text section
-            if (type.requiresText) ...[
-              Text(
-                'Your Response${type == ChallengeType.text ? ' (required)' : ''}',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
+            // Text input (required for text types, caption for photo-only).
+            if (type.requiresText || type == ChallengeType.photo) ...[
+              SectionLabel(type.requiresText
+                  ? l10n.labelYourAnswerUpper
+                  : l10n.labelCaptionOptionalUpper),
               const SizedBox(height: 8),
-              TextField(
-                controller: _textController,
-                enabled: !_isSubmitting,
-                maxLines: 4,
-                maxLength: 500,
-                decoration: const InputDecoration(
-                  hintText: 'Write your response...',
-                  border: OutlineInputBorder(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceGlass,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.glassBorder),
                 ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // Optional text for photo-only challenges
-            if (type == ChallengeType.photo) ...[
-              Text(
-                'Caption (optional)',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _textController,
-                enabled: !_isSubmitting,
-                maxLines: 2,
-                maxLength: 200,
-                decoration: const InputDecoration(
-                  hintText: 'Add a caption...',
-                  border: OutlineInputBorder(),
+                child: TextField(
+                  controller: _textController,
+                  enabled: !_isSubmitting,
+                  maxLines: type.requiresText ? 4 : 2,
+                  maxLength: type.requiresText ? 500 : 200,
+                  cursorColor: AppColors.primary,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  decoration: InputDecoration(
+                    hintText:
+                        type.requiresText ? l10n.answerHint : l10n.captionHint,
+                    counterText: '',
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
                 ),
-                textCapitalization: TextCapitalization.sentences,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 14),
             ],
 
-            // Submit button
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submit,
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Submit',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
+            const SizedBox(height: 6),
+            CoralButton(
+              label: l10n.send,
+              height: 54,
+              loading: _isSubmitting,
+              onPressed: _isSubmitting ? null : _submit,
             ),
-            const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SourceRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SourceRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      radius: 16,
+      padding: const EdgeInsets.all(14),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primaryText),
+          const SizedBox(width: 12),
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          const Spacer(),
+          const Icon(Icons.chevron_right,
+              size: 20, color: AppColors.textTertiary),
+        ],
       ),
     );
   }

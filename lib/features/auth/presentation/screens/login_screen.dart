@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/kor/kor.dart';
 import '../providers/auth_provider.dart';
 
-/// Login screen with sign in and sign up functionality
+/// Login / sign-up — KOR design "2a Login".
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,7 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _isSignUp = false;
   bool _obscurePassword = true;
-  String? _emailConfirmationMessage;
+  bool _showConfirmationBanner = false;
 
   @override
   void dispose() {
@@ -32,11 +33,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    // Clear previous messages
     ref.read(authActionsProvider).clearError();
-    setState(() {
-      _emailConfirmationMessage = null;
-    });
+    setState(() => _showConfirmationBanner = false);
 
     if (!_formKey.currentState!.validate()) {
       return;
@@ -53,36 +51,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         if (mounted && emailConfirmationRequired) {
           setState(() {
-            _emailConfirmationMessage =
-                'Account created! Please check your email to verify your account before signing in.';
-            _isSignUp = false; // Switch to sign-in mode
+            _showConfirmationBanner = true;
+            _isSignUp = false;
           });
           _passwordController.clear();
           return;
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created successfully!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
         }
       } else {
         await ref.read(authActionsProvider).signIn(
               email: _emailController.text.trim(),
               password: _passwordController.text,
             );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Welcome back!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-        }
       }
     } catch (e) {
       // Error is handled by provider
@@ -92,262 +71,286 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _toggleMode() {
     setState(() {
       _isSignUp = !_isSignUp;
-      _emailConfirmationMessage = null;
+      _showConfirmationBanner = false;
     });
     _formKey.currentState?.reset();
     ref.read(authActionsProvider).clearError();
+  }
+
+  Future<void> _resendConfirmation() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    try {
+      await ref.read(authActionsProvider).resendConfirmationEmail(email: email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).resendEmailSent)),
+        );
+      }
+    } catch (_) {
+      // Error shown by provider
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authLoadingProvider);
     final errorMessage = ref.watch(authErrorProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // App logo and title
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.emoji_events,
-                    size: 56,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const KorWordmark(size: 44),
+                const SizedBox(height: 14),
                 Text(
-                  AppConstants.appName,
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _isSignUp ? 'Create your account' : 'Welcome back!',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  l10n.tagline,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontSize: 15,
+                        height: 1.45,
                         color: AppColors.textSecondary,
                       ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 36),
 
-                // Email confirmation message with resend button
-                if (_emailConfirmationMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withAlpha(25),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.success),
-                    ),
+                if (_showConfirmationBanner) ...[
+                  GlassCard.amber(
+                    radius: 16,
+                    padding: const EdgeInsets.all(14),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.mark_email_read_outlined,
-                                color: AppColors.success),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _emailConfirmationMessage!,
-                                style:
-                                    const TextStyle(color: AppColors.success),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          l10n.accountCreatedVerify,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
+                                  ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Align(
                           alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: isLoading
-                                ? null
-                                : () async {
-                                    final email = _emailController.text.trim();
-                                    if (email.isEmpty) return;
-                                    try {
-                                      await ref
-                                          .read(authActionsProvider)
-                                          .resendConfirmationEmail(
-                                              email: email);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                                'Confirmation email resent! Check your inbox.'),
-                                            backgroundColor: AppColors.success,
-                                          ),
-                                        );
-                                      }
-                                    } catch (_) {
-                                      // Error shown by provider
-                                    }
-                                  },
-                            icon: const Icon(Icons.refresh, size: 18),
-                            label: const Text('Resend Email'),
+                          child: GestureDetector(
+                            onTap: isLoading ? null : _resendConfirmation,
+                            child: Text(
+                              l10n.resendEmail,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                ],
 
-                // Error message
-                if (errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.error.withAlpha(25),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.error),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: AppColors.error),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            errorMessage,
-                            style: const TextStyle(color: AppColors.error),
+                if (errorMessage != null) ...[
+                  GlassCard.coral(
+                    radius: 16,
+                    padding: const EdgeInsets.all(14),
+                    child: Text(
+                      errorMessage,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.primaryText,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
                           ),
-                        ),
-                      ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                ],
 
-                // Form
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Username field (only for sign up)
                       if (_isSignUp) ...[
-                        TextFormField(
+                        _KorField(
+                          label: l10n.labelUsernameUpper,
                           controller: _usernameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Username',
-                            hintText: 'Enter your username',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
                           validator: Validators.validateUsername,
                           enabled: !isLoading,
                           textInputAction: TextInputAction.next,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                       ],
-
-                      // Email field
-                      TextFormField(
+                      _KorField(
+                        label: l10n.labelEmailUpper,
                         controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'Enter your email',
-                          prefixIcon: Icon(Icons.email_outlined),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
                         validator: Validators.validateEmail,
                         enabled: !isLoading,
+                        keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                       ),
-                      const SizedBox(height: 16),
-
-                      // Password field
-                      TextFormField(
+                      const SizedBox(height: 12),
+                      _KorField(
+                        label: l10n.labelPasswordUpper,
                         controller: _passwordController,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          hintText: 'Enter your password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                        ),
-                        obscureText: _obscurePassword,
                         validator: Validators.validatePassword,
                         enabled: !isLoading,
+                        obscureText: _obscurePassword,
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _submit(),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Submit button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : _submit,
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
+                        trailing: GestureDetector(
+                          onTap: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                          child: Text(
+                            _obscurePassword ? l10n.show : l10n.hide,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textTertiary,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ),
-                                )
-                              : Text(
-                                  _isSignUp ? 'Sign Up' : 'Sign In',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                          ),
                         ),
+                      ),
+                      const SizedBox(height: 22),
+                      CoralButton(
+                        label: _isSignUp ? l10n.signUp : l10n.signIn,
+                        height: 54,
+                        loading: isLoading,
+                        onPressed: isLoading ? null : _submit,
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
-
-                // Toggle sign in/sign up
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _isSignUp
-                          ? 'Already have an account?'
-                          : "Don't have an account?",
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    TextButton(
-                      onPressed: isLoading ? null : _toggleMode,
-                      child: Text(
-                        _isSignUp ? 'Sign In' : 'Sign Up',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                const SizedBox(height: 22),
+                Center(
+                  child: GestureDetector(
+                    onTap: isLoading ? null : _toggleMode,
+                    child: Text.rich(
+                      TextSpan(
+                        text: _isSignUp
+                            ? l10n.haveAccountPrompt
+                            : l10n.noAccountPrompt,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                        children: [
+                          TextSpan(
+                            text: _isSignUp ? l10n.signIn : l10n.signUp,
+                            style: const TextStyle(
+                              color: AppColors.primaryText,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Center(
+                  child: Text(
+                    l10n.forgotPassword,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textFaint,
+                        ),
+                  ),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// KOR input: glass container, 16 radius, tiny label above the value.
+/// [label] must be pre-uppercased (l10n `...Upper` keys) — see SectionLabel.
+class _KorField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String? Function(String?)? validator;
+  final bool enabled;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
+  final Widget? trailing;
+
+  const _KorField({
+    required this.label,
+    required this.controller,
+    this.validator,
+    this.enabled = true,
+    this.obscureText = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.onFieldSubmitted,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceGlass,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10.5,
+                        letterSpacing: 1,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary.withAlpha(102), // 40%
+                      ),
+                ),
+                TextFormField(
+                  controller: controller,
+                  validator: validator,
+                  enabled: enabled,
+                  obscureText: obscureText,
+                  keyboardType: keyboardType,
+                  textInputAction: textInputAction,
+                  onFieldSubmitted: onFieldSubmitted,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  cursorColor: AppColors.primary,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.only(top: 4, bottom: 8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 12),
+            trailing!,
+          ],
+        ],
       ),
     );
   }

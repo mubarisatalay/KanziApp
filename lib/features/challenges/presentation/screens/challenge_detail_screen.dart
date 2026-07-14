@@ -3,15 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/empty_state.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../shared/widgets/kor/kor.dart';
 import '../../domain/entities/challenge.dart';
 import '../providers/challenge_provider.dart';
 import '../widgets/submission_card.dart';
 import '../widgets/submit_response_sheet.dart';
+import 'reveal_ceremony_screen.dart';
 
-/// Screen showing challenge details and submissions
+/// Challenge detail — KOR "2a Challenge detail" (revealed) + "3a Blind day".
 class ChallengeDetailScreen extends ConsumerWidget {
   final String challengeId;
   final String roomId;
@@ -26,325 +28,389 @@ class ChallengeDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final challengeAsync = ref.watch(challengeByIdProvider(challengeId));
     final submissionsAsync = ref.watch(submissionsProvider(challengeId));
-    final currentUser = ref.watch(currentUserProvider);
 
+    final l10n = AppLocalizations.of(context);
     return challengeAsync.when(
-      data: (challenge) => Scaffold(
-        appBar: AppBar(
-          title: Text(challenge.isToday ? "Today's Challenge" : 'Challenge'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
+      data: (challenge) {
+        final blindNow = challenge.blind && !challenge.isRevealedNow;
+        return Scaffold(
+          body: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () async {
                 ref.invalidate(challengeByIdProvider(challengeId));
                 ref.invalidate(submissionsProvider(challengeId));
+                await ref.read(submissionsProvider(challengeId).future);
               },
-            ),
-          ],
-        ),
-        body: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(challengeByIdProvider(challengeId));
-            ref.invalidate(submissionsProvider(challengeId));
-            await ref.read(submissionsProvider(challengeId).future);
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Challenge card
-                _ChallengeInfoCard(challenge: challenge),
-                const SizedBox(height: 24),
-
-                // Submissions header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Submissions',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    Text(
-                      '${challenge.submissionCount}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
+                    // Header row.
+                    Row(
+                      children: [
+                        GlassIconButton(
+                          icon: Icons.chevron_left,
+                          onTap: () => Navigator.of(context).maybePop(),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                challenge.isToday
+                                    ? l10n.todaysChallengeTitle
+                                    : l10n.challengeTitle,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                challenge.challengeDate.formattedDate,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(color: AppColors.textFaint),
+                              ),
+                            ],
                           ),
+                        ),
+                        if (challenge.isActive && challenge.revealAt != null)
+                          RevealCountdown(revealAt: challenge.revealAt!),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Hero: blind ceremony teaser or standard info card.
+                    if (blindNow)
+                      _BlindHero(
+                        challenge: challenge,
+                        // Countdown hit zero: the day just revealed — refresh
+                        // everything and land in the ceremony.
+                        onRevealReached: () {
+                          ref.invalidate(challengeByIdProvider(challengeId));
+                          ref.invalidate(submissionsProvider(challengeId));
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => RevealCeremonyScreen(
+                                  challengeId: challengeId),
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      _InfoHero(challenge: challenge),
+                    if (!blindNow &&
+                        challenge.isRevealedNow &&
+                        challenge.submissionCount > 0) ...[
+                      const SizedBox(height: 12),
+                      GlassCard.amber(
+                        radius: 16,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 13),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => RevealCeremonyScreen(
+                                  challengeId: challengeId),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          l10n.seeResults,
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+
+                    // Submissions.
+                    SectionLabel(
+                      l10n.sectionSubmissionsUpper,
+                      trailing: blindNow
+                          ? Text(
+                              l10n.anonymousNote,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                      color: AppColors.textFaint,
+                                      fontSize: 11),
+                            )
+                          : Text(
+                              '${challenge.submissionCount}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: AppColors.textTertiary),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    submissionsAsync.when(
+                      data: (submissions) {
+                        if (submissions.isEmpty) {
+                          return GlassCard(
+                            padding: const EdgeInsets.all(22),
+                            child: Center(
+                              child: Text(
+                                l10n.noSubmissionsYet,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                        color: AppColors.textTertiary),
+                              ),
+                            ),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            for (var i = 0; i < submissions.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: SubmissionCard(
+                                  submission: submissions[i],
+                                  index: i,
+                                  isActive: challenge.isActive,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                      loading: () => const SubmissionListShimmer(),
+                      error: (error, _) => ErrorStateWidget(
+                        message: error.toString(),
+                        onRetry: () =>
+                            ref.invalidate(submissionsProvider(challengeId)),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-
-                // Submissions list
-                submissionsAsync.when(
-                  data: (submissions) {
-                    if (submissions.isEmpty) {
-                      return _buildEmptySubmissions(context);
-                    }
-
-                    return Column(
-                      children: submissions
-                          .map((s) => SubmissionCard(
-                                submission: s,
-                                currentUserId: currentUser?.id ?? '',
-                                isActive: challenge.isActive,
-                              ))
-                          .toList(),
-                    );
-                  },
-                  loading: () => const SubmissionListShimmer(),
-                  error: (error, _) => ErrorStateWidget(
-                    message: error.toString(),
-                    onRetry: () =>
-                        ref.invalidate(submissionsProvider(challengeId)),
-                  ),
-                ),
+              ),
+            ),
+          ),
+          // Sticky bottom CTA while the challenge accepts submissions.
+          bottomNavigationBar:
+              challenge.isActive && !challenge.hasUserSubmitted
+                  ? SafeArea(
+                      minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                      child: CoralButton(
+                        label: challenge.challengeType.requiresPhoto
+                            ? l10n.submitYourPhoto
+                            : l10n.submitYourAnswer,
+                        height: 54,
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (_) =>
+                                SubmitResponseSheet(challenge: challenge),
+                          );
+                        },
+                      ),
+                    )
+                  : null,
+        );
+      },
+      loading: () => const Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              children: [
+                ChallengeCardShimmer(),
+                SizedBox(height: 24),
+                SubmissionListShimmer(),
               ],
             ),
           ),
         ),
-        // FAB to submit if challenge is active and user hasn't submitted
-        floatingActionButton: challenge.isActive && !challenge.hasUserSubmitted
-            ? FloatingActionButton.extended(
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
-                    ),
-                    builder: (_) => SubmitResponseSheet(challenge: challenge),
-                  );
-                },
-                icon: const Icon(Icons.add_a_photo_outlined),
-                label: const Text('Submit'),
-              )
-            : null,
-      ),
-      loading: () => Scaffold(
-        appBar: AppBar(title: const Text('Challenge')),
-        body: const SingleChildScrollView(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            children: [
-              ChallengeCardShimmer(),
-              SizedBox(height: 24),
-              SubmissionListShimmer(),
-            ],
-          ),
-        ),
       ),
       error: (error, _) => Scaffold(
-        appBar: AppBar(title: const Text('Challenge')),
-        body: ErrorStateWidget(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(challengeByIdProvider(challengeId)),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptySubmissions(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 48,
-              color: AppColors.textTertiary,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No submissions yet',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Be the first to submit!',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
-            ),
-          ],
+        body: SafeArea(
+          child: ErrorStateWidget(
+            message: error.toString(),
+            onRetry: () => ref.invalidate(challengeByIdProvider(challengeId)),
+          ),
         ),
       ),
     );
   }
 }
 
-class _ChallengeInfoCard extends StatelessWidget {
+/// Blind-day hero (3a): centered challenge text + big countdown to reveal.
+class _BlindHero extends StatelessWidget {
   final Challenge challenge;
+  final VoidCallback? onRevealReached;
 
-  const _ChallengeInfoCard({required this.challenge});
+  const _BlindHero({required this.challenge, this.onRevealReached});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Status badge
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: challenge.isActive
-                        ? AppColors.success.withAlpha(25)
-                        : AppColors.textTertiary.withAlpha(25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        challenge.isActive
-                            ? Icons.play_circle_outline
-                            : Icons.check_circle_outline,
-                        size: 14,
-                        color: challenge.isActive
-                            ? AppColors.success
-                            : AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        challenge.isActive ? 'Active' : 'Completed',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: challenge.isActive
-                              ? AppColors.success
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+    final l10n = AppLocalizations.of(context);
+    final revealAt = challenge.revealAt;
+    final revealTime = revealAt != null
+        ? '${revealAt.toLocal().hour.toString().padLeft(2, '0')}:'
+            '${revealAt.toLocal().minute.toString().padLeft(2, '0')}'
+        : '21:00';
+    return GlassCard.coral(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            challenge.challengeText,
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontSize: 18),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.revealCountdownLabelUpper,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontSize: 10.5,
+                  letterSpacing: 1.6,
+                  color: AppColors.textTertiary,
                 ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_typeIcon(challenge.challengeType),
-                          size: 14, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        challenge.challengeType.label,
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 6),
+          if (revealAt != null)
+            RevealCountdown.big(revealAt: revealAt, onDone: onRevealReached),
+          const SizedBox(height: 10),
+          Text(
+            l10n.revealNote(revealTime),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.textTertiary),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-            // Challenge text
-            Text(
-              challenge.challengeText,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 12),
+/// Standard hero (2a): status pill, type chip, challenge text, meta.
+class _InfoHero extends StatelessWidget {
+  final Challenge challenge;
 
-            // Date
-            Row(
-              children: [
-                const Icon(Icons.calendar_today_outlined,
-                    size: 14, color: AppColors.textTertiary),
-                const SizedBox(width: 4),
-                Text(
-                  challenge.challengeDate.formattedDate,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
-                ),
-                const SizedBox(width: 16),
-                const Icon(Icons.people_outline,
-                    size: 14, color: AppColors.textTertiary),
-                const SizedBox(width: 4),
-                Text(
-                  '${challenge.submissionCount} submission${challenge.submissionCount == 1 ? '' : 's'}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
-                ),
-              ],
-            ),
+  const _InfoHero({required this.challenge});
 
-            // User submission status
-            if (challenge.isToday) ...[
-              const SizedBox(height: 12),
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final active = challenge.isActive;
+    final label = challenge.isUpcoming
+        ? l10n.statusUpcomingUpper
+        : active
+            ? l10n.statusActiveUpper
+            : l10n.statusFinishedUpper;
+    // Upcoming reads neutral; only a live "today" challenge gets the coral dot.
+    final highlighted = active && !challenge.isUpcoming;
+    return GlassCard.coral(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: challenge.hasUserSubmitted
-                      ? AppColors.success.withAlpha(15)
-                      : AppColors.warning.withAlpha(15),
-                  borderRadius: BorderRadius.circular(8),
+                  color: highlighted
+                      ? AppColors.coralTint
+                      : AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                      color: highlighted
+                          ? AppColors.coralBorder
+                          : AppColors.glassBorder),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      challenge.hasUserSubmitted
-                          ? Icons.check_circle_outline
-                          : Icons.pending_outlined,
-                      size: 18,
-                      color: challenge.hasUserSubmitted
-                          ? AppColors.success
-                          : AppColors.warning,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      challenge.hasUserSubmitted
-                          ? 'You have submitted!'
-                          : 'You haven\'t submitted yet',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: challenge.hasUserSubmitted
-                            ? AppColors.success
-                            : AppColors.warning,
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: highlighted
+                            ? AppColors.primary
+                            : AppColors.textTertiary,
+                        shape: BoxShape.circle,
                       ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: highlighted
+                                ? AppColors.primaryText
+                                : AppColors.textTertiary,
+                          ),
                     ),
                   ],
                 ),
               ),
+              const Spacer(),
+              Text(
+                _typeLabel(l10n, challenge.challengeType),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(color: AppColors.textTertiary),
+              ),
             ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            challenge.challengeText,
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Text(
+                l10n.submissionsCount(challenge.submissionCount),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(fontSize: 12.5),
+              ),
+              const Spacer(),
+              if (challenge.isToday)
+                Text(
+                  challenge.hasUserSubmitted
+                      ? l10n.youSubmitted
+                      : l10n.youHaventSubmitted,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontSize: 12.5,
+                        color: challenge.hasUserSubmitted
+                            ? AppColors.accent
+                            : AppColors.primaryText,
+                      ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  IconData _typeIcon(ChallengeType type) {
-    switch (type) {
-      case ChallengeType.photo:
-        return Icons.photo_camera_outlined;
-      case ChallengeType.text:
-        return Icons.text_fields;
-      case ChallengeType.photoText:
-        return Icons.photo_library_outlined;
-    }
-  }
+  String _typeLabel(AppLocalizations l10n, ChallengeType type) =>
+      switch (type) {
+        ChallengeType.photo => l10n.typePhoto,
+        ChallengeType.text => l10n.typeText,
+        ChallengeType.photoText => l10n.typePhotoText,
+      };
 }
