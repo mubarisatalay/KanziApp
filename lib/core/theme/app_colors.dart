@@ -1,46 +1,89 @@
 import 'package:flutter/material.dart';
 
-/// Application color palette
+/// KOR palette — flat warm charcoal + one coral + restrained amber.
+///
+/// Source of truth: design_handoff_kanzi_kor_redesign/README.md ("Design Tokens").
+/// Anti-goals: no gradients, no neon glows, no aurora backgrounds. Amber is
+/// reserved for streaks, gold/#1 rank, timers and success-ish states only.
 class AppColors {
   AppColors._();
 
-  // Primary colors
-  static const Color primary = Color(0xFF6366F1); // Indigo
-  static const Color primaryDark = Color(0xFF4F46E5);
-  static const Color primaryLight = Color(0xFF818CF8);
+  // --- Core surfaces ---
+  /// Flat warm charcoal. The only background in the app — no gradients anywhere.
+  static const Color background = Color(0xFF16120F);
 
-  // Secondary colors
-  static const Color secondary = Color(0xFFEC4899); // Pink
-  static const Color secondaryDark = Color(0xFFDB2777);
-  static const Color secondaryLight = Color(0xFFF472B6);
+  /// Glass card fill: white at 5% over [background].
+  static const Color surfaceGlass = Color(0x0DFFFFFF);
 
-  // Accent colors
-  static const Color accent = Color(0xFF10B981); // Green
-  static const Color accentDark = Color(0xFF059669);
-  static const Color accentLight = Color(0xFF34D399);
+  /// 1px hairline border on glass surfaces: white at 9%.
+  static const Color glassBorder = Color(0x17FFFFFF);
 
-  // Neutral colors
-  static const Color background = Color(0xFFFAFAFA);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF5F5F5);
+  /// Slightly denser fill for chips/inputs: white at 6-7%.
+  static const Color surfaceVariant = Color(0x12FFFFFF);
 
-  // Text colors
-  static const Color textPrimary = Color(0xFF1F2937);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textTertiary = Color(0xFF9CA3AF);
+  /// Opaque surface for dialogs/sheets (glass doesn't work over scrim).
+  static const Color surface = Color(0xFF211C18);
 
-  // Status colors
-  static const Color success = Color(0xFF10B981);
-  static const Color error = Color(0xFFEF4444);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color info = Color(0xFF3B82F6);
+  static const Color divider = Color(0x12FFFFFF); // white 7%
 
-  // Special colors
-  static const Color winner = Color(0xFFFBBF24); // Gold for winner
-  static const Color voted = Color(0xFFEF4444); // Red for voted submissions
-  static const Color divider = Color(0xFFE5E7EB);
+  // --- Coral (primary) ---
+  /// Flat fill for all primary actions.
+  static const Color primary = Color(0xFFFF6B4A);
 
-  // Dark mode colors (for future implementation)
-  static const Color backgroundDark = Color(0xFF111827);
-  static const Color surfaceDark = Color(0xFF1F2937);
+  /// Pressed state: primary darkened ~8%. No elevation change on press.
+  static const Color primaryPressed = Color(0xFFEB6244);
+
+  /// Text/icons sitting on a coral fill.
+  static const Color onPrimary = Color(0xFF1A0F0A);
+
+  /// Coral for text, links and badges on dark (lighter than the fill coral).
+  static const Color primaryText = Color(0xFFFF8A6B);
+
+  /// Coral tint fill (7-14% opacity band; this is ~10%).
+  static const Color coralTint = Color(0x1AFF6B4A);
+
+  /// Border for coral-tinted containers (22-30% band; ~26%).
+  static const Color coralBorder = Color(0x42FF6B4A);
+
+  // --- Amber (accent — streaks, #1 rank, timers, success-ish only) ---
+  static const Color accent = Color(0xFFF5A860);
+
+  /// Amber tint fill (7-15% band; ~11%).
+  static const Color amberTint = Color(0x1CF5A860);
+
+  /// Border for amber-tinted containers (25-35% band; ~30%).
+  static const Color amberBorder = Color(0x4DF5A860);
+
+  // --- Rank metals ---
+  static const Color bronze = Color(0xFFD89A72);
+
+  /// Silver (2nd place): warm white at 80%.
+  static const Color silver = Color(0xCCF3EDE7);
+  static const Color silverBorder = Color(0x59F3EDE7); // warm white 35%
+
+  // --- Text (warm white ramp) ---
+  static const Color textPrimary = Color(0xFFF3EDE7);
+  static const Color textSecondary = Color(0x8CF3EDE7); // 55%
+  static const Color textTertiary = Color(0x6BF3EDE7); // 42%
+  static const Color textFaint = Color(0x59F3EDE7); // 35%
+
+  // --- Status ---
+  /// Success states are "success-ish" amber per the KOR spec.
+  static const Color success = accent;
+  static const Color error = Color(0xFFE8574B);
+  static const Color warning = accent;
+  static const Color info = textSecondary;
+
+  // --- Legacy aliases (still referenced by not-yet-restyled files) ---
+  static const Color primaryDark = primaryPressed;
+  static const Color primaryLight = primaryText;
+  static const Color secondary = primary;
+  static const Color secondaryDark = primaryPressed;
+  static const Color secondaryLight = primaryText;
+  static const Color accentDark = accent;
+  static const Color accentLight = accent;
+  static const Color winner = accent; // gold/#1 = amber
+  static const Color voted = accent;
+  static const Color backgroundDark = background;
+  static const Color surfaceDark = surface;
 }

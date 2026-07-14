@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/kor/kor.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/leaderboard_entry.dart';
 import '../providers/leaderboard_provider.dart';
 
-/// Leaderboard screen showing rankings for a room
+/// Leaderboard — KOR design "2a Leaderboard": segmented control, podium slabs,
+/// coral-highlighted own row. No emoji medals, no crown.
 class LeaderboardScreen extends ConsumerWidget {
   final String roomId;
   final String roomName;
@@ -21,27 +24,63 @@ class LeaderboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTab = ref.watch(leaderboardTabProvider);
+    final l10n = AppLocalizations.of(context);
 
-    return DefaultTabController(
-      length: 2,
-      initialIndex: selectedTab,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('$roomName - Leaderboard'),
-          bottom: TabBar(
-            onTap: (index) {
-              ref.read(leaderboardTabProvider.notifier).state = index;
-            },
-            tabs: const [
-              Tab(text: 'Today'),
-              Tab(text: 'All-Time'),
-            ],
-          ),
-        ),
-        body: TabBarView(
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _DailyLeaderboardTab(roomId: roomId),
-            _OverallLeaderboardTab(roomId: roomId),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GlassIconButton(
+                        icon: Icons.chevron_left,
+                        onTap: () => Navigator.of(context).maybePop(),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(l10n.scoreboardTitle,
+                                style:
+                                    Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 2),
+                            Text(
+                              roomName,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.textTertiary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SegmentedTabs(
+                    labels: [l10n.tabToday, l10n.tabAllTime],
+                    selectedIndex: selectedTab,
+                    onChanged: (index) => ref
+                        .read(leaderboardTabProvider.notifier)
+                        .state = index,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: selectedTab == 0
+                  ? _DailyLeaderboardTab(roomId: roomId)
+                  : _OverallLeaderboardTab(roomId: roomId),
+            ),
           ],
         ),
       ),
@@ -49,7 +88,6 @@ class LeaderboardScreen extends ConsumerWidget {
   }
 }
 
-/// Today's leaderboard tab
 class _DailyLeaderboardTab extends ConsumerWidget {
   final String roomId;
 
@@ -57,14 +95,18 @@ class _DailyLeaderboardTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final params = (roomId: roomId, date: DateTime.now());
+    // Day-truncated so the family key is stable across rebuilds — a raw
+    // DateTime.now() key creates a new provider (and a new request) per build.
+    final now = DateTime.now();
+    final params = (roomId: roomId, date: DateTime(now.year, now.month, now.day));
     final leaderboardAsync = ref.watch(dailyLeaderboardProvider(params));
     final currentUser = ref.watch(currentUserProvider);
 
     return leaderboardAsync.when(
       data: (entries) {
         if (entries.isEmpty) {
-          return _buildEmptyState(context, "No submissions today yet");
+          return _EmptyBoard(
+              message: AppLocalizations.of(context).noSubmissionsToday);
         }
         return _LeaderboardContent(
           entries: entries,
@@ -84,7 +126,6 @@ class _DailyLeaderboardTab extends ConsumerWidget {
   }
 }
 
-/// All-time leaderboard tab
 class _OverallLeaderboardTab extends ConsumerWidget {
   final String roomId;
 
@@ -98,7 +139,8 @@ class _OverallLeaderboardTab extends ConsumerWidget {
     return leaderboardAsync.when(
       data: (entries) {
         if (entries.isEmpty) {
-          return _buildEmptyState(context, "No data yet");
+          return _EmptyBoard(
+              message: AppLocalizations.of(context).noVotesYetBoard);
         }
         return _LeaderboardContent(
           entries: entries,
@@ -118,37 +160,40 @@ class _OverallLeaderboardTab extends ConsumerWidget {
   }
 }
 
-Widget _buildEmptyState(BuildContext context, String message) {
-  return Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.leaderboard_outlined,
-              size: 64, color: AppColors.textTertiary),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+class _EmptyBoard extends StatelessWidget {
+  final String message;
+
+  const _EmptyBoard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: GlassCard(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              Text(
+                AppLocalizations.of(context).boardEmptyHint,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.textTertiary),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Submit responses and vote to see rankings!',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiary,
-                ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-/// Content widget showing podium + ranking list
+/// Podium (top three by list order — handles rank ties gracefully) + rows.
 class _LeaderboardContent extends StatelessWidget {
   final List<LeaderboardEntry> entries;
   final String currentUserId;
@@ -162,31 +207,25 @@ class _LeaderboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final podiumEntries = entries.where((e) => e.isOnPodium).toList();
+    final podium = entries.take(3).toList();
+    final rest = entries.skip(3).toList();
 
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         child: Column(
           children: [
-            // Podium section
-            if (podiumEntries.isNotEmpty)
-              _PodiumWidget(
-                entries: podiumEntries,
-                currentUserId: currentUserId,
-              ),
-
-            const SizedBox(height: 16),
-
-            // Full ranking list
-            ...entries.map(
-              (entry) => _RankingTile(
+            _Podium(entries: podium),
+            const SizedBox(height: 20),
+            for (final entry in rest) ...[
+              _RankingRow(
                 entry: entry,
                 isCurrentUser: entry.userId == currentUserId,
               ),
-            ),
+              const SizedBox(height: 8),
+            ],
           ],
         ),
       ),
@@ -194,358 +233,214 @@ class _LeaderboardContent extends StatelessWidget {
   }
 }
 
-/// Podium visualization with 1st, 2nd, 3rd place
-class _PodiumWidget extends StatelessWidget {
+/// Bottom-aligned 2-1-3 podium: glass slabs, amber center, bronze right.
+class _Podium extends StatelessWidget {
   final List<LeaderboardEntry> entries;
-  final String currentUserId;
 
-  const _PodiumWidget({
-    required this.entries,
-    required this.currentUserId,
-  });
+  const _Podium({required this.entries});
 
   @override
   Widget build(BuildContext context) {
-    final first = entries.where((e) => e.rank == 1).firstOrNull;
-    final second = entries.where((e) => e.rank == 2).firstOrNull;
-    final third = entries.where((e) => e.rank == 3).firstOrNull;
+    final first = entries.isNotEmpty ? entries[0] : null;
+    final second = entries.length > 1 ? entries[1] : null;
+    final third = entries.length > 2 ? entries[2] : null;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // 2nd place (left)
-          if (second != null)
-            _PodiumItem(
-              entry: second,
-              height: 100,
-              color: const Color(0xFFC0C0C0), // Silver
-              isCurrentUser: second.userId == currentUserId,
-            )
-          else
-            const SizedBox(width: 100),
-
-          const SizedBox(width: 8),
-
-          // 1st place (center, tallest)
-          if (first != null)
-            _PodiumItem(
-              entry: first,
-              height: 140,
-              color: const Color(0xFFFFD700), // Gold
-              isCurrentUser: first.userId == currentUserId,
-            )
-          else
-            const SizedBox(width: 100),
-
-          const SizedBox(width: 8),
-
-          // 3rd place (right)
-          if (third != null)
-            _PodiumItem(
-              entry: third,
-              height: 70,
-              color: const Color(0xFFCD7F32), // Bronze
-              isCurrentUser: third.userId == currentUserId,
-            )
-          else
-            const SizedBox(width: 100),
-        ],
-      ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: second != null
+              ? _PodiumColumn(entry: second, place: 2)
+              : const SizedBox(),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: first != null
+              ? _PodiumColumn(entry: first, place: 1)
+              : const SizedBox(),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: third != null
+              ? _PodiumColumn(entry: third, place: 3)
+              : const SizedBox(),
+        ),
+      ],
     );
   }
 }
 
-class _PodiumItem extends StatelessWidget {
+class _PodiumColumn extends StatelessWidget {
   final LeaderboardEntry entry;
-  final double height;
-  final Color color;
-  final bool isCurrentUser;
+  final int place; // 1 = center
 
-  const _PodiumItem({
-    required this.entry,
-    required this.height,
-    required this.color,
-    required this.isCurrentUser,
-  });
+  const _PodiumColumn({required this.entry, required this.place});
+
+  double get _slabHeight => switch (place) { 1 => 112, 2 => 80, _ => 58 };
+  double get _avatarSize => place == 1 ? 60 : 50;
+
+  Color get _slabFill => switch (place) {
+        1 => AppColors.amberTint,
+        2 => AppColors.surfaceGlass,
+        _ => const Color(0x1AD89A72),
+      };
+
+  Color get _slabBorder => switch (place) {
+        1 => AppColors.amberBorder,
+        2 => AppColors.glassBorder,
+        _ => const Color(0x40D89A72),
+      };
+
+  Color get _digitColor => switch (place) {
+        1 => AppColors.accent,
+        2 => AppColors.silver,
+        _ => AppColors.bronze,
+      };
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 100,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Avatar
-          Stack(
-            alignment: Alignment.bottomCenter,
-            children: [
-              CircleAvatar(
-                radius: entry.rank == 1 ? 32 : 24,
-                backgroundColor: color.withAlpha(50),
-                child: Text(
-                  (entry.username)[0].toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: entry.rank == 1 ? 24 : 18,
-                    color: color,
-                  ),
-                ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        MonogramAvatar(
+          name: entry.displayName ?? entry.username,
+          size: _avatarSize,
+          tint: place == 1 ? MonogramTint.amber : MonogramTint.neutral,
+          ringColor: place == 1 ? AppColors.amberBorder : null,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          entry.displayName ?? entry.username,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
               ),
-              if (entry.rank == 1)
-                const Positioned(
-                  top: -4,
-                  child: Text('👑', style: TextStyle(fontSize: 20)),
-                ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          height: _slabHeight,
+          decoration: BoxDecoration(
+            color: _slabFill,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(14)),
+            border: Border.all(color: _slabBorder),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${entry.rank}',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      fontSize: place == 1 ? 26 : 22,
+                      color: _digitColor,
+                    ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                AppLocalizations.of(context).votesShort(entry.totalVotes),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(fontSize: 11, color: AppColors.textTertiary),
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-
-          // Username
-          Text(
-            entry.displayName ?? entry.username,
-            style: TextStyle(
-              fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.w600,
-              fontSize: 12,
-              color: isCurrentUser ? AppColors.primary : AppColors.textPrimary,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-
-          // Votes
-          Text(
-            '${entry.totalVotes} votes',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.textTertiary,
-                ),
-          ),
-          const SizedBox(height: 4),
-
-          // Pedestal
-          Container(
-            width: 100,
-            height: height,
-            decoration: BoxDecoration(
-              color: color.withAlpha(40),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(8),
-              ),
-              border: Border.all(color: color.withAlpha(100)),
-            ),
-            child: Center(
-              child: Text(
-                _ordinalSuffix(entry.rank),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: entry.rank == 1 ? 28 : 22,
-                  color: color,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
-  }
-
-  String _ordinalSuffix(int rank) {
-    switch (rank) {
-      case 1:
-        return '1st';
-      case 2:
-        return '2nd';
-      case 3:
-        return '3rd';
-      default:
-        return '${rank}th';
-    }
   }
 }
 
-/// Single ranking row
-class _RankingTile extends StatelessWidget {
+/// Ranks 4+: glass row; the caller's row gets the coral treatment + SEN pill.
+class _RankingRow extends StatelessWidget {
   final LeaderboardEntry entry;
   final bool isCurrentUser;
 
-  const _RankingTile({
+  const _RankingRow({
     required this.entry,
     this.isCurrentUser = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 4),
-      color: isCurrentUser ? AppColors.primary.withAlpha(15) : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            // Rank
-            SizedBox(
-              width: 36,
-              child: _buildRank(entry.rank),
-            ),
-            const SizedBox(width: 12),
-
-            // Avatar
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: entry.isOnPodium
-                  ? _podiumColor(entry.rank).withAlpha(30)
-                  : AppColors.surfaceVariant,
-              child: Text(
-                (entry.username)[0].toUpperCase(),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: entry.isOnPodium
-                      ? _podiumColor(entry.rank)
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Name
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          entry.displayName ?? entry.username,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.copyWith(
-                                fontWeight: isCurrentUser
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: isCurrentUser ? AppColors.primary : null,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (isCurrentUser)
-                        Container(
-                          margin: const EdgeInsets.only(left: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha(25),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'You',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  Text(
-                    '${entry.submissionCount} submission${entry.submissionCount == 1 ? '' : 's'}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Votes
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.star_rounded,
-                      size: 16,
-                      color: entry.isOnPodium
-                          ? AppColors.winner
-                          : AppColors.textTertiary,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${entry.totalVotes}',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: entry.isOnPodium ? AppColors.winner : null,
-                          ),
-                    ),
-                  ],
-                ),
-                Text(
-                  'votes',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
-                ),
-              ],
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: isCurrentUser ? AppColors.coralTint : AppColors.surfaceGlass,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isCurrentUser ? AppColors.coralBorder : AppColors.glassBorder,
         ),
       ),
-    );
-  }
-
-  Widget _buildRank(int rank) {
-    if (rank <= 3) {
-      return Text(
-        _medal(rank),
-        style: const TextStyle(fontSize: 22),
-        textAlign: TextAlign.center,
-      );
-    }
-    return Text(
-      '#$rank',
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 14,
-        color: AppColors.textSecondary,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 24,
+            child: Text(
+              '${entry.rank}',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textTertiary,
+                  ),
+            ),
+          ),
+          MonogramAvatar(
+            name: entry.displayName ?? entry.username,
+            size: 32,
+            tint: MonogramTint
+                .values[entry.username.hashCode.abs() % MonogramTint.values.length],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    entry.displayName ?? entry.username,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (isCurrentUser) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context).youPillUpper,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Text(
+            '${entry.totalVotes}',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color:
+                      isCurrentUser ? AppColors.accent : AppColors.textPrimary,
+                ),
+          ),
+        ],
       ),
-      textAlign: TextAlign.center,
     );
-  }
-
-  String _medal(int rank) {
-    switch (rank) {
-      case 1:
-        return '🥇';
-      case 2:
-        return '🥈';
-      case 3:
-        return '🥉';
-      default:
-        return '';
-    }
-  }
-
-  Color _podiumColor(int rank) {
-    switch (rank) {
-      case 1:
-        return const Color(0xFFFFD700); // Gold
-      case 2:
-        return const Color(0xFFC0C0C0); // Silver
-      case 3:
-        return const Color(0xFFCD7F32); // Bronze
-      default:
-        return AppColors.textSecondary;
-    }
   }
 }

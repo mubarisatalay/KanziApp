@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
+import 'kor/kor.dart';
 
-/// A beautiful empty state widget with icon, title, subtitle, and optional action
+/// KOR empty state: quiet glass disc + restrained copy. No oversized icons.
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -18,7 +21,7 @@ class EmptyStateWidget extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.iconColor,
-    this.iconSize = 80,
+    this.iconSize = 26,
   });
 
   @override
@@ -32,43 +35,41 @@ class EmptyStateWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: iconSize + 40,
-              height: iconSize + 40,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: (iconColor ?? theme.colorScheme.primary).withAlpha(20),
+                color: AppColors.surfaceGlass,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppColors.glassBorder),
               ),
               child: Icon(
                 icon,
-                size: iconSize,
-                color: (iconColor ?? theme.colorScheme.primary).withAlpha(150),
+                size: iconSize.clamp(18, 30),
+                color: iconColor ?? AppColors.textTertiary,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             Text(
               title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface.withAlpha(200),
-              ),
+              style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withAlpha(130),
+                  color: AppColors.textTertiary,
+                  height: 1.4,
                 ),
                 textAlign: TextAlign.center,
               ),
             ],
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 24),
-              FilledButton.icon(
+              const SizedBox(height: 20),
+              CoralButton.inline(
+                label: actionLabel!,
                 onPressed: onAction,
-                icon: const Icon(Icons.add),
-                label: Text(actionLabel!),
               ),
             ],
           ],
@@ -78,7 +79,7 @@ class EmptyStateWidget extends StatelessWidget {
   }
 }
 
-/// Error state widget with retry action
+/// KOR error state with retry.
 class ErrorStateWidget extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
@@ -100,40 +101,39 @@ class ErrorStateWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: theme.colorScheme.error.withAlpha(20),
+                color: AppColors.coralTint,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppColors.coralBorder),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.error_outline,
-                size: 60,
-                color: theme.colorScheme.error.withAlpha(150),
+                size: 26,
+                color: AppColors.primaryText,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             Text(
-              'Oops! Something went wrong',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              AppLocalizations.of(context).somethingWentWrong,
+              style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               message,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withAlpha(130),
+                color: AppColors.textTertiary,
+                height: 1.4,
               ),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
+              const SizedBox(height: 20),
+              CoralButton.inline(
+                label: AppLocalizations.of(context).retry,
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try Again'),
               ),
             ],
           ],

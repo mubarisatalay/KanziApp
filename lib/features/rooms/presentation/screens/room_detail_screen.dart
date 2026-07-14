@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/extensions.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/kor/kor.dart';
+import '../../../challenges/domain/entities/challenge.dart';
 import '../../../challenges/presentation/providers/challenge_provider.dart';
 import '../../../challenges/presentation/screens/challenge_detail_screen.dart';
 import '../../../challenges/presentation/screens/challenge_history_screen.dart';
@@ -12,8 +15,9 @@ import '../../../challenges/presentation/widgets/create_challenge_dialog.dart';
 import '../../../challenges/presentation/widgets/submit_response_sheet.dart';
 import '../../../leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../providers/room_provider.dart';
+import '../widgets/create_room_dialog.dart' show KorDialogField;
 
-/// Room detail screen showing room info, members, and challenges
+/// Room detail — KOR design "2a Room detail".
 class RoomDetailScreen extends ConsumerWidget {
   final String roomId;
 
@@ -23,808 +27,668 @@ class RoomDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final roomAsync = ref.watch(roomByIdProvider(roomId));
     final membersAsync = ref.watch(roomMembersProvider(roomId));
+    final l10n = AppLocalizations.of(context);
 
     return roomAsync.when(
       data: (room) => Scaffold(
-        appBar: AppBar(
-          title: Text(room.name),
-          actions: [
-            // Share code button
-            IconButton(
-              icon: const Icon(Icons.share),
-              tooltip: 'Share room code',
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: room.code));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Room code "${room.code}" copied!'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              },
-            ),
-            // More options
-            if (room.isAdmin)
-              PopupMenuButton<String>(
-                onSelected: (value) =>
-                    _handleMenuAction(context, ref, value, room.id, room.name),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: ListTile(
-                      leading: Icon(Icons.edit_outlined),
-                      title: Text('Edit Room'),
-                      contentPadding: EdgeInsets.zero,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: back square, name + meta, overflow menu.
+                Row(
+                  children: [
+                    GlassIconButton(
+                      icon: Icons.chevron_left,
+                      onTap: () => Navigator.of(context).maybePop(),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: ListTile(
-                      leading:
-                          Icon(Icons.delete_outline, color: AppColors.error),
-                      title: Text('Delete Room',
-                          style: TextStyle(color: AppColors.error)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
-              )
-            else
-              PopupMenuButton<String>(
-                onSelected: (value) =>
-                    _handleMenuAction(context, ref, value, room.id, room.name),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'leave',
-                    child: ListTile(
-                      leading: Icon(Icons.exit_to_app, color: AppColors.error),
-                      title: Text('Leave Room',
-                          style: TextStyle(color: AppColors.error)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Room info card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Room code
-                      Row(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.tag,
-                              size: 20, color: AppColors.textSecondary),
-                          const SizedBox(width: 8),
                           Text(
-                            'Invite Code',
+                            room.name,
+                            style: Theme.of(context).textTheme.titleLarge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            l10n.members(room.memberCount) +
+                                (room.isAdmin ? l10n.youAreAdminSuffix : ''),
                             style: Theme.of(context)
                                 .textTheme
-                                .labelLarge
-                                ?.copyWith(color: AppColors.textSecondary),
+                                .bodySmall
+                                ?.copyWith(color: AppColors.textTertiary),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: AppColors.primary.withAlpha(50)),
-                            ),
-                            child: Text(
-                              room.code,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'monospace',
-                                letterSpacing: 6,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: room.code));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Code copied!')),
-                              );
-                            },
-                            icon: const Icon(Icons.copy),
-                            tooltip: 'Copy code',
-                          ),
-                        ],
-                      ),
+                    ),
+                    _RoomMenu(room: room, roomId: roomId),
+                  ],
+                ),
+                const SizedBox(height: 18),
 
-                      // Description
-                      if (room.description != null &&
-                          room.description!.isNotEmpty) ...[
-                        const Divider(height: 24),
-                        Text(
-                          room.description!,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                // Invite code row.
+                GlassCard(
+                  radius: 16,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      Text(
+                        l10n.inviteCodeLabel,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: AppColors.textTertiary),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            room.code,
+                            style: AppTheme.mono(
+                              fontSize: 17,
+                              letterSpacing: 5,
+                              color: AppColors.primaryText,
+                            ),
+                          ),
                         ),
-                      ],
-
-                      const Divider(height: 24),
-
-                      // Stats row
-                      Row(
-                        children: [
-                          _StatItem(
-                            icon: Icons.people_outline,
-                            label: '${room.memberCount}',
-                            subtitle: 'Members',
-                          ),
-                          const SizedBox(width: 24),
-                          _StatItem(
-                            icon: Icons.calendar_today_outlined,
-                            label: room.createdAt.formattedDate,
-                            subtitle: 'Created',
-                          ),
-                        ],
                       ),
-                      const Divider(height: 24),
-
-                      // Leaderboard button
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => LeaderboardScreen(
-                                  roomId: room.id,
-                                  roomName: room.name,
-                                ),
+                      PressableScale(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: room.code));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l10n.codeCopied)),
+                          );
+                        },
+                        child: Text(
+                          l10n.shareAction,
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(
+                                color: AppColors.primaryText,
+                                fontWeight: FontWeight.w700,
                               ),
-                            );
-                          },
-                          icon: const Icon(Icons.leaderboard_outlined),
-                          label: const Text('View Leaderboard'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.winner,
-                            side: BorderSide(
-                              color: AppColors.winner.withAlpha(100),
-                            ),
-                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 24),
 
-              const SizedBox(height: 24),
-
-              // Today's Challenge section
-              _TodayChallengeSection(
-                roomId: room.id,
-                isAdmin: room.isAdmin,
-              ),
-
-              const SizedBox(height: 24),
-
-              // Members section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Members',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                // Today's challenge.
+                SectionLabel(
+                  l10n.sectionTodaysChallengeUpper,
+                  trailing: PressableScale(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ChallengeHistoryScreen(roomId: roomId),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      l10n.historyLink,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: AppColors.textTertiary,
+                            fontSize: 12.5,
+                          ),
+                    ),
                   ),
-                  Text(
-                    '${room.memberCount}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                ),
+                const SizedBox(height: 12),
+                _TodayChallengeHero(roomId: roomId, isAdmin: room.isAdmin),
+                const SizedBox(height: 24),
 
-              membersAsync.when(
-                data: (members) => Card(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: members.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final member = members[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: member.isAdmin
-                              ? AppColors.primary.withAlpha(25)
-                              : AppColors.accent.withAlpha(25),
-                          child: Text(
-                            (member.username ?? '?')[0].toUpperCase(),
-                            style: TextStyle(
-                              color: member.isAdmin
-                                  ? AppColors.primary
-                                  : AppColors.accent,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          member.displayName ?? member.username ?? 'Unknown',
-                        ),
-                        subtitle: Text('@${member.username ?? ''}'),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: member.isAdmin
-                                ? AppColors.primary.withAlpha(25)
-                                : AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            member.isAdmin ? 'Admin' : 'Member',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: member.isAdmin
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary,
-                            ),
+                // Members.
+                SectionLabel(
+                  l10n.sectionMembersUpper,
+                  trailing: PressableScale(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LeaderboardScreen(
+                            roomId: room.id,
+                            roomName: room.name,
                           ),
                         ),
                       );
                     },
+                    child: Text(
+                      l10n.leaderboardLink,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: AppColors.primaryText,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
                   ),
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text('Failed to load members: $error'),
+                const SizedBox(height: 12),
+                membersAsync.when(
+                  data: (members) => GlassCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < members.length; i++) ...[
+                          if (i > 0)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 14),
+                              child: Divider(),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            child: Row(
+                              children: [
+                                MonogramAvatar(
+                                  name: members[i].displayName ??
+                                      members[i].username,
+                                  size: 34,
+                                  tint: MonogramTint.values[
+                                      (members[i].username ?? '?')
+                                              .hashCode
+                                              .abs() %
+                                          MonogramTint.values.length],
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        members[i].displayName ??
+                                            members[i].username ??
+                                            l10n.unknownUser,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall,
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        '@${members[i].username ?? ''}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                                color: AppColors.textFaint,
+                                                fontSize: 11.5),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (members[i].isAdmin)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 9, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.coralTint,
+                                      borderRadius: BorderRadius.circular(99),
+                                    ),
+                                    child: Text(
+                                      l10n.adminBadge,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primaryText,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => GlassCard(
+                    child: Text(
+                      l10n.membersLoadFailed(error.toString()),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-      loading: () => Scaffold(
-        appBar: AppBar(title: const Text('Room')),
-        body: const SingleChildScrollView(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            children: [
-              ChallengeCardShimmer(),
-              SizedBox(height: 16),
-              RoomListShimmer(count: 3),
-            ],
+      loading: () => const Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              children: [
+                ChallengeCardShimmer(),
+                SizedBox(height: 16),
+                RoomListShimmer(count: 3),
+              ],
+            ),
           ),
         ),
       ),
       error: (error, _) => Scaffold(
-        appBar: AppBar(title: const Text('Room')),
-        body: ErrorStateWidget(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(roomByIdProvider(roomId)),
+        body: SafeArea(
+          child: ErrorStateWidget(
+            message: error.toString(),
+            onRetry: () => ref.invalidate(roomByIdProvider(roomId)),
+          ),
         ),
-      ),
-    );
-  }
-
-  void _handleMenuAction(
-    BuildContext context,
-    WidgetRef ref,
-    String action,
-    String roomId,
-    String roomName,
-  ) {
-    switch (action) {
-      case 'edit':
-        _showEditDialog(context, ref, roomId);
-        break;
-      case 'delete':
-        _showDeleteConfirmation(context, ref, roomId, roomName);
-        break;
-      case 'leave':
-        _showLeaveConfirmation(context, ref, roomId, roomName);
-        break;
-    }
-  }
-
-  void _showEditDialog(BuildContext context, WidgetRef ref, String roomId) {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    final room = ref.read(roomByIdProvider(roomId)).value;
-    if (room != null) {
-      nameController.text = room.name;
-      descController.text = room.description ?? '';
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Edit Room'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Room Name',
-                prefixIcon: Icon(Icons.groups_outlined),
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                prefixIcon: Icon(Icons.description_outlined),
-              ),
-              maxLines: 2,
-              maxLength: 200,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await ref.read(roomRepositoryProvider).updateRoom(
-                      roomId: roomId,
-                      name: nameController.text,
-                      description: descController.text,
-                    );
-                ref.invalidate(roomByIdProvider(roomId));
-                ref.read(roomActionsProvider).refreshRooms();
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Room updated!'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to update: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteConfirmation(
-    BuildContext context,
-    WidgetRef ref,
-    String roomId,
-    String roomName,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Room'),
-        content: Text(
-          'Are you sure you want to delete "$roomName"? This action cannot be undone and all room data will be permanently deleted.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await ref.read(roomActionsProvider).deleteRoom(roomId);
-                if (context.mounted) {
-                  Navigator.pop(context); // Close dialog
-                  Navigator.pop(context); // Go back to home
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Room deleted'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to delete: $e')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLeaveConfirmation(
-    BuildContext context,
-    WidgetRef ref,
-    String roomId,
-    String roomName,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Leave Room'),
-        content: Text('Are you sure you want to leave "$roomName"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await ref.read(roomActionsProvider).leaveRoom(roomId);
-                if (context.mounted) {
-                  Navigator.pop(context); // Close dialog
-                  Navigator.pop(context); // Go back to home
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('You left the room'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to leave: $e')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
-            child: const Text('Leave'),
-          ),
-        ],
       ),
     );
   }
 }
 
-class _StatItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
+/// Overflow menu (glass ⋯ square): admin gets edit/create/delete, members leave.
+class _RoomMenu extends ConsumerWidget {
+  final dynamic room;
+  final String roomId;
 
-  const _StatItem({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-  });
+  const _RoomMenu({required this.room, required this.roomId});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return PopupMenuButton<String>(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.glassBorder),
+      ),
+      onSelected: (value) => _handle(context, ref, value),
+      child: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceGlass,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.glassBorder),
         ),
+        child: const Icon(Icons.more_horiz,
+            size: 19, color: AppColors.textPrimary),
+      ),
+      itemBuilder: (context) => [
+        if (room.isAdmin) ...[
+          PopupMenuItem(
+              value: 'create', child: Text(l10n.menuCreateChallenge)),
+          PopupMenuItem(value: 'edit', child: Text(l10n.menuEditRoom)),
+          PopupMenuItem(
+            value: 'delete',
+            child: Text(l10n.menuDeleteRoom,
+                style: const TextStyle(color: AppColors.primaryText)),
+          ),
+        ] else
+          PopupMenuItem(
+            value: 'leave',
+            child: Text(l10n.menuLeaveRoom,
+                style: const TextStyle(color: AppColors.primaryText)),
+          ),
       ],
     );
   }
+
+  void _handle(BuildContext context, WidgetRef ref, String action) {
+    final l10n = AppLocalizations.of(context);
+    switch (action) {
+      case 'create':
+        showDialog(
+          context: context,
+          builder: (_) => CreateChallengeDialog(roomId: roomId),
+        );
+      case 'edit':
+        _showEditDialog(context, ref);
+      case 'delete':
+        _confirm(
+          context,
+          title: l10n.deleteRoomTitle,
+          message: l10n.deleteRoomConfirm(room.name as String),
+          confirmLabel: l10n.delete,
+          onConfirm: () async {
+            await ref.read(roomActionsProvider).deleteRoom(roomId);
+          },
+          successMessage: l10n.roomDeleted,
+        );
+      case 'leave':
+        _confirm(
+          context,
+          title: l10n.leaveRoomTitle,
+          message: l10n.leaveRoomConfirm(room.name as String),
+          confirmLabel: l10n.leave,
+          onConfirm: () async {
+            await ref.read(roomActionsProvider).leaveRoom(roomId);
+          },
+          successMessage: l10n.leftRoom,
+        );
+    }
+  }
+
+  void _showEditDialog(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final nameController = TextEditingController(text: room.name as String);
+    final descController =
+        TextEditingController(text: (room.description as String?) ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.editRoomTitle,
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              KorDialogField(
+                label: l10n.labelRoomNameUpper,
+                controller: nameController,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 12),
+              KorDialogField(
+                label: l10n.labelDescriptionUpper,
+                controller: descController,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 20),
+              CoralButton(
+                label: l10n.save,
+                onPressed: () async {
+                  try {
+                    await ref.read(roomRepositoryProvider).updateRoom(
+                          roomId: roomId,
+                          name: nameController.text,
+                          description: descController.text,
+                        );
+                    ref.invalidate(roomByIdProvider(roomId));
+                    ref.read(roomActionsProvider).refreshRooms();
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l10n.roomUpdated)),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content:
+                                Text(l10n.updateFailed(e.toString()))),
+                      );
+                    }
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Text(
+                      l10n.cancel,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textTertiary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirm(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required Future<void> Function() onConfirm,
+    required String successMessage,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            style: TextButton.styleFrom(
+                foregroundColor: AppColors.textTertiary),
+            child: Text(AppLocalizations.of(context).cancel),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await onConfirm();
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext); // close dialog
+                  Navigator.pop(context); // back to home
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(successMessage)),
+                  );
+                }
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(AppLocalizations.of(context)
+                            .actionFailed(e.toString()))),
+                  );
+                }
+              }
+            },
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-/// Widget showing today's challenge in room detail
-class _TodayChallengeSection extends ConsumerWidget {
+/// The coral hero card for today's challenge (or the quiet no-challenge state).
+class _TodayChallengeHero extends ConsumerWidget {
   final String roomId;
   final bool isAdmin;
 
-  const _TodayChallengeSection({
-    required this.roomId,
-    required this.isAdmin,
-  });
+  const _TodayChallengeHero({required this.roomId, required this.isAdmin});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final challengeAsync = ref.watch(todayChallengeProvider(roomId));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return challengeAsync.when(
+      data: (challenge) => challenge == null
+          ? _NoChallengeCard(roomId: roomId, isAdmin: isAdmin)
+          : _HeroCard(challenge: challenge, roomId: roomId),
+      loading: () => const ChallengeCardShimmer(),
+      error: (error, _) => GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Today's Challenge",
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // History button
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ChallengeHistoryScreen(roomId: roomId),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.history, size: 18),
-                  label: const Text('History'),
-                ),
-                // Create challenge button (admin only)
-                if (isAdmin)
-                  IconButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => CreateChallengeDialog(roomId: roomId),
-                      );
-                    },
-                    icon: const Icon(Icons.add_circle_outline),
-                    tooltip: 'Create Challenge',
-                    color: AppColors.primary,
-                  ),
-              ],
+            Text(AppLocalizations.of(context).challengeLoadFailed,
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 10),
+            CoralButton.inline(
+              label: AppLocalizations.of(context).retry,
+              onPressed: () => ref.invalidate(todayChallengeProvider(roomId)),
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-
-        // Challenge content
-        challengeAsync.when(
-          data: (challenge) {
-            if (challenge == null) {
-              return _buildNoChallenge(context);
-            }
-
-            return _buildChallengeCard(context, challenge, ref);
-          },
-          loading: () => const ChallengeCardShimmer(),
-          error: (error, _) => Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Icon(Icons.error_outline, color: AppColors.error),
-                  const SizedBox(height: 8),
-                  Text('Failed to load challenge: $error'),
-                  TextButton(
-                    onPressed: () =>
-                        ref.invalidate(todayChallengeProvider(roomId)),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNoChallenge(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Column(
-            children: [
-              Icon(
-                Icons.emoji_events_outlined,
-                size: 48,
-                color: AppColors.primary.withAlpha(100),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'No challenge today',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                isAdmin
-                    ? 'Tap + to create a challenge'
-                    : 'Challenges will appear here daily',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: AppColors.textTertiary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChallengeCard(
-    BuildContext context,
-    dynamic challenge,
-    WidgetRef ref,
-  ) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ChallengeDetailScreen(
-                challengeId: challenge.id,
-                roomId: roomId,
-              ),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Type badge
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withAlpha(25),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.play_circle_outline,
-                            size: 14, color: AppColors.success),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Active',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.success,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      challenge.challengeType.label,
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Challenge text
-              Text(
-                challenge.challengeText,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 12),
-
-              // Stats
-              Row(
-                children: [
-                  const Icon(Icons.people_outline,
-                      size: 14, color: AppColors.textTertiary),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${challenge.submissionCount} submission${challenge.submissionCount == 1 ? '' : 's'}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                  ),
-                  const Spacer(),
-                  if (challenge.hasUserSubmitted)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.check_circle,
-                            size: 14, color: AppColors.success),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Submitted',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.success,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                        ),
-                      ],
-                    )
-                  else
-                    TextButton(
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(16),
-                            ),
-                          ),
-                          builder: (_) =>
-                              SubmitResponseSheet(challenge: challenge),
-                        );
-                      },
-                      child: const Text('Submit Now →'),
-                    ),
-                ],
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
 }
+
+class _NoChallengeCard extends StatelessWidget {
+  final String roomId;
+  final bool isAdmin;
+
+  const _NoChallengeCard({required this.roomId, required this.isAdmin});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return GlassCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.noChallengeToday,
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isAdmin ? l10n.noChallengeAdminHint : l10n.noChallengeMemberHint,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.textTertiary),
+          ),
+          if (isAdmin) ...[
+            const SizedBox(height: 14),
+            CoralButton.inline(
+              label: l10n.menuCreateChallenge,
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => CreateChallengeDialog(roomId: roomId),
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  final Challenge challenge;
+  final String roomId;
+
+  const _HeroCard({required this.challenge, required this.roomId});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return GlassCard.coral(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChallengeDetailScreen(
+              challengeId: challenge.id,
+              roomId: roomId,
+            ),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // AKTİF pill.
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.coralTint,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: AppColors.coralBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      challenge.isActive
+                          ? l10n.statusActiveUpper
+                          : l10n.statusFinishedUpper,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: AppColors.primaryText,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              if (challenge.isActive && challenge.revealAt != null)
+                RevealCountdown(revealAt: challenge.revealAt!),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            challenge.challengeText,
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text(
+                l10n.submissionsCount(challenge.submissionCount),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(fontSize: 12.5),
+              ),
+              const Spacer(),
+              if (challenge.hasUserSubmitted)
+                Text(
+                  l10n.submitted,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w700,
+                      ),
+                )
+              else if (challenge.isActive)
+                CoralButton.inline(
+                  label: l10n.submitAction,
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => SubmitResponseSheet(challenge: challenge),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+

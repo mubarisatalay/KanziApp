@@ -48,9 +48,18 @@ class Challenge {
   bool get isRevealedNow =>
       revealAt != null ? !DateTime.now().isBefore(revealAt!) : revealed;
 
-  /// Whether this challenge still accepts submissions/votes (today and not yet
-  /// revealed — the server returns 409 for either after reveal).
-  bool get isActive => isToday && !isRevealedNow;
+  /// Whether this challenge still accepts submissions/votes. Mirrors the
+  /// server's gate exactly: everything closes at [revealAt] — a challenge
+  /// dated tomorrow is already open, yesterday's revealed one is not.
+  bool get isActive => !isRevealedNow;
+
+  /// Whether this challenge is scheduled for a future day (created ahead by
+  /// an admin): open for submissions, but not yet "today's game".
+  bool get isUpcoming {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return challengeDate.isAfter(today) && !isRevealedNow;
+  }
 
   /// Whether this challenge is in the past
   bool get isPast => challengeDate.isBefore(DateTime.now().copyWith(

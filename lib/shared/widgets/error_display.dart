@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
+import 'kor/kor.dart';
 
-/// Error display widget
+/// Compact KOR error display with retry.
 class ErrorDisplay extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
@@ -19,28 +22,29 @@ class ErrorDisplay extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
+              size: 34,
+              color: AppColors.primaryText,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
-              'Oops!',
-              style: Theme.of(context).textTheme.headlineMedium,
+              AppLocalizations.of(context).somethingWentWrong,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
+              const SizedBox(height: 20),
+              CoralButton.inline(
+                label: AppLocalizations.of(context).retry,
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
               ),
             ],
           ],

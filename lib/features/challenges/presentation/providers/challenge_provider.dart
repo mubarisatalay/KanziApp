@@ -3,6 +3,7 @@ import 'package:cross_file/cross_file.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/providers/api_providers.dart';
 import '../../data/models/challenge_model.dart';
+import '../../data/models/reveal_result_model.dart';
 import '../../data/models/submission_model.dart';
 import '../../data/repositories/challenge_repository.dart';
 import '../../domain/entities/challenge.dart';
@@ -21,6 +22,13 @@ final todayChallengeProvider =
     FutureProvider.family<ChallengeModel?, String>((ref, roomId) async {
   final repository = ref.watch(challengeRepositoryProvider);
   return repository.getTodayChallenge(roomId);
+});
+
+/// Ceremony results for a revealed challenge (the server 409s before reveal).
+final revealResultsProvider =
+    FutureProvider.family<RevealResultModel, String>((ref, challengeId) async {
+  final repository = ref.watch(challengeRepositoryProvider);
+  return repository.getRevealResults(challengeId);
 });
 
 /// Provider for challenge history in a room

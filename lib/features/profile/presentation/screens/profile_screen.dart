@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/extensions.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/kor/kor.dart';
 import '../../../auth/data/models/user_profile_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../rooms/presentation/providers/room_provider.dart';
 import '../providers/profile_provider.dart';
 
-/// Profile screen for viewing and editing user profile
+/// Profile — KOR design "2a Profile".
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -71,10 +74,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _isSaving = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated!'),
-            backgroundColor: AppColors.success,
-          ),
+          SnackBar(content: Text(AppLocalizations.of(context).profileUpdated)),
         );
       }
     } catch (e) {
@@ -87,247 +87,377 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  String _memberSince(BuildContext context, DateTime createdAt) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final monthYear = DateFormat.yMMM(locale).format(createdAt.toLocal());
+    return AppLocalizations.of(context).memberSince(monthYear);
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentUserProfileProvider);
     final currentUser = ref.watch(currentUserProvider);
+    final roomCount =
+        ref.watch(userRoomsProvider).valueOrNull?.length;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Edit Profile',
-              onPressed: _startEditing,
-            )
-          else ...[
-            TextButton(
-              onPressed: _isSaving ? null : _cancelEditing,
-              child: const Text('Cancel'),
-            ),
-          ],
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Avatar
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: AppColors.primary.withAlpha(25),
-              child:
-                  const Icon(Icons.person, size: 50, color: AppColors.primary),
-            ),
-            const SizedBox(height: 24),
-
-            // Profile info or edit form
-            profileAsync.when(
-              data: (profile) {
-                if (profile == null) {
-                  return const Text('Profile not found');
-                }
-
-                if (_isEditing) {
-                  return _buildEditForm(context);
-                }
-
-                return _buildProfileInfo(context, profile, currentUser);
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Column(
-                  children: [
-                    const Icon(Icons.error_outline, color: AppColors.error),
-                    const SizedBox(height: 8),
-                    Text('Failed to load profile: $error'),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: () =>
-                          ref.invalidate(currentUserProfileProvider),
-                      child: const Text('Retry'),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row.
+              Row(
+                children: [
+                  GlassIconButton(
+                    icon: Icons.chevron_left,
+                    onTap: () => Navigator.of(context).maybePop(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(l10n.profileTitle,
+                        style: Theme.of(context).textTheme.titleLarge),
+                  ),
+                  PressableScale(
+                    onTap: _isSaving
+                        ? null
+                        : (_isEditing ? _cancelEditing : _startEditing),
+                    child: Text(
+                      _isEditing ? l10n.cancel : l10n.edit,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: _isEditing
+                                ? AppColors.textTertiary
+                                : AppColors.primaryText,
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 26),
 
-            const SizedBox(height: 32),
+              profileAsync.when(
+                data: (profile) {
+                  if (profile == null) {
+                    return Center(child: Text(l10n.profileNotFound));
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Identity block.
+                      Center(
+                        child: Column(
+                          children: [
+                            MonogramAvatar(
+                              name: profile.displayName ?? profile.username,
+                              size: 84,
+                              tint: MonogramTint.coral,
+                              ringColor: AppColors.coralBorder,
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              profile.displayName ?? profile.username,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(fontSize: 21),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '@${profile.username} · '
+                              '${_memberSince(context, profile.createdAt)}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                      fontSize: 12.5,
+                                      color: AppColors.textTertiary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
-            // Sign out button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  try {
-                    await ref.read(authActionsProvider).signOut();
-                  } catch (_) {}
+                      // Stat tiles.
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatTile(
+                              value: roomCount?.toString() ?? '–',
+                              label: l10n.statRoomsUpper,
+                              valueColor: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _StatTile(
+                              // Wins/streak land with the weekly-stats backend features.
+                              value: '–',
+                              label: l10n.statWinsUpper,
+                              valueColor: AppColors.accent,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _StatTile(
+                              value: '–',
+                              label: l10n.statStreakUpper,
+                              valueColor: AppColors.primaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      if (_isEditing)
+                        _buildEditForm(context)
+                      else
+                        _buildInfoList(context, profile, currentUser),
+
+                      const SizedBox(height: 28),
+                      OutlinedButton(
+                        onPressed: () async {
+                          try {
+                            await ref.read(authActionsProvider).signOut();
+                          } catch (_) {}
+                        },
+                        child: Text(l10n.signOut),
+                      ),
+                    ],
+                  );
                 },
-                icon: const Icon(Icons.logout, color: AppColors.error),
-                label: const Text(
-                  'Sign Out',
-                  style: TextStyle(color: AppColors.error),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.error),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(
+                  child: Column(
+                    children: [
+                      Text(l10n.profileLoadFailed(error.toString()),
+                          style: Theme.of(context).textTheme.bodySmall),
+                      const SizedBox(height: 12),
+                      CoralButton.inline(
+                        label: l10n.retry,
+                        onPressed: () =>
+                            ref.invalidate(currentUserProfileProvider),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileInfo(
+  Widget _buildInfoList(
     BuildContext context,
     UserProfileModel profile,
     UserProfileModel? currentUser,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _ProfileRow(
-              icon: Icons.person_outline,
-              label: 'Display Name',
-              value: profile.displayName ?? profile.username,
-            ),
-            const Divider(height: 24),
-            _ProfileRow(
-              icon: Icons.alternate_email,
-              label: 'Username',
-              value: '@${profile.username}',
-            ),
-            const Divider(height: 24),
-            _ProfileRow(
-              icon: Icons.email_outlined,
-              label: 'Email',
-              value: currentUser?.email ?? 'N/A',
-            ),
-            const Divider(height: 24),
-            _ProfileRow(
-              icon: Icons.calendar_today_outlined,
-              label: 'Member Since',
-              value: profile.createdAt.formattedDate,
-            ),
-          ],
-        ),
+    final l10n = AppLocalizations.of(context);
+    return GlassCard(
+      radius: 16,
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          _InfoRow(
+              label: l10n.labelDisplayNameUpper,
+              value: profile.displayName ?? profile.username),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(),
+          ),
+          _InfoRow(
+              label: l10n.labelUsernameUpper, value: '@${profile.username}'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(),
+          ),
+          _InfoRow(
+              label: l10n.labelEmailUpper, value: currentUser?.email ?? '–'),
+        ],
       ),
     );
   }
 
   Widget _buildEditForm(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_error != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withAlpha(25),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.error),
-                  ),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(
-                      color: AppColors.error,
-                      fontSize: 13,
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_error != null) ...[
+            GlassCard.coral(
+              radius: 14,
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                _error!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.primaryText,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ),
-              TextFormField(
-                controller: _displayNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Display Name',
-                  prefixIcon: Icon(Icons.person_outline),
-                  hintText: 'How others will see you',
-                ),
-                enabled: !_isSaving,
-                textCapitalization: TextCapitalization.words,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  prefixIcon: Icon(Icons.alternate_email),
-                  hintText: 'Unique identifier',
-                ),
-                enabled: !_isSaving,
-                validator: Validators.validateUsername,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveProfile,
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Save Changes'),
-                ),
-              ),
-            ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          _EditField(
+            label: AppLocalizations.of(context).labelDisplayNameUpper,
+            controller: _displayNameController,
+            enabled: !_isSaving,
+            textCapitalization: TextCapitalization.words,
           ),
-        ),
+          const SizedBox(height: 12),
+          _EditField(
+            label: AppLocalizations.of(context).labelUsernameUpper,
+            controller: _usernameController,
+            enabled: !_isSaving,
+            validator: Validators.validateUsername,
+          ),
+          const SizedBox(height: 18),
+          CoralButton(
+            label: AppLocalizations.of(context).save,
+            loading: _isSaving,
+            onPressed: _isSaving ? null : _saveProfile,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ProfileRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
+class _StatTile extends StatelessWidget {
   final String value;
+  final String label;
+  final Color valueColor;
 
-  const _ProfileRow({
-    required this.icon,
-    required this.label,
+  const _StatTile({
     required this.value,
+    required this.label,
+    required this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ],
+    return GlassCard(
+      radius: 18,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 21,
+                  color: valueColor,
+                ),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 9.5,
+                  letterSpacing: 0.8,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textTertiary,
+                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 10.5,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textTertiary,
+                ),
+          ),
+          const SizedBox(height: 3),
+          Text(value, style: Theme.of(context).textTheme.bodyLarge),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final bool enabled;
+  final TextCapitalization textCapitalization;
+  final String? Function(String?)? validator;
+
+  const _EditField({
+    required this.label,
+    required this.controller,
+    this.enabled = true,
+    this.textCapitalization = TextCapitalization.none,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 11, 16, 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceGlass,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 10.5,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary.withAlpha(102),
+                ),
+          ),
+          TextFormField(
+            controller: controller,
+            enabled: enabled,
+            validator: validator,
+            textCapitalization: textCapitalization,
+            style: Theme.of(context).textTheme.bodyLarge,
+            cursorColor: AppColors.primary,
+            decoration: const InputDecoration(
+              isDense: true,
+              filled: false,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              contentPadding: EdgeInsets.only(top: 4, bottom: 8),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
