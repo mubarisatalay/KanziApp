@@ -1,0 +1,256 @@
+# Challenge pool — loaded into pool_challenges on startup by ChallengePoolLoader.
+# Rule: every challenge must be something everyone does the SAME WAY so entries
+# can be meaningfully compared and voted on. Bad: "show what made you happy today"
+# (everyone shows something different). Good: "strike your best superhero pose"
+# (everyone does the same thing, vote on who nailed it).
+#
+# To add new challenges: append entries here and redeploy. Existing rows are
+# never deleted — the loader inserts only entries missing from the DB.
+
+challenges:
+
+  # --- PHOTO ---
+
+  - text: "Strike your most powerful superhero pose"
+    type: photo
+    blind: true
+
+  - text: "Make your best 'I just won the lottery' face"
+    type: photo
+    blind: true
+
+  - text: "Make your most dramatic 'I can't believe this' reaction face"
+    type: photo
+    blind: true
+
+  - text: "Do your best impression of a confused puppy"
+    type: photo
+    blind: true
+
+  - text: "Strike your best bodybuilder pose"
+    type: photo
+    blind: true
+
+  - text: "Make your best movie villain laugh face"
+    type: photo
+    blind: true
+
+  - text: "Do your best slow-motion action hero pose"
+    type: photo
+    blind: true
+
+  - text: "Make the face your boss makes when reviewing your work"
+    type: photo
+    blind: true
+
+  - text: "Show your most convincing 'I'm definitely not sleeping in this meeting' look"
+    type: photo
+    blind: true
+
+  - text: "Strike the pose of someone who is very, very late for something important"
+    type: photo
+    blind: true
+
+  - text: "Show your best 'I've been awake for 48 hours' face"
+    type: photo
+    blind: true
+
+  - text: "Make the most dramatic face you can — no context, just commit"
+    type: photo
+    blind: true
+
+  - text: "Strike the pose of someone who just remembered they forgot something important"
+    type: photo
+    blind: true
+
+  - text: "Make your most convincing 'deep in thought' face"
+    type: photo
+    blind: true
+
+  - text: "Do your best impression of a Renaissance painting subject"
+    type: photo
+    blind: true
+
+  - text: "Strike a pose like you're on the cover of a magazine — your magazine"
+    type: photo
+    blind: true
+
+  - text: "Show your most creative use of the nearest object as a hat"
+    type: photo
+    blind: true
+
+  - text: "Make your best 'loading...' face — blank stare, absolutely nothing going on"
+    type: photo
+    blind: true
+
+  - text: "Make the face you make when your alarm goes off in the morning"
+    type: photo
+    blind: true
+
+  - text: "Do your best red carpet pose with whatever backdrop you have right now"
+    type: photo
+    blind: true
+
+  - text: "Show your best 'I'm casually reading a very important document' pose"
+    type: photo
+    blind: true
+
+  - text: "Make your most convincing 'I'm a very serious professional' face"
+    type: photo
+    blind: true
+
+  - text: "Do your best impression of someone doing online shopping at 2 AM"
+    type: photo
+    blind: true
+
+  - text: "Show your best 'statue in a museum' pose — freeze mid-action"
+    type: photo
+    blind: true
+
+  - text: "Make the face you make when someone spoils a show you haven't finished"
+    type: photo
+    blind: true
+
+  - text: "Strike your most confident 'I definitely know what I'm doing' pose"
+    type: photo
+    blind: true
+
+  - text: "Show your best 'I'm listening carefully and definitely understand everything' face"
+    type: photo
+    blind: true
+
+  - text: "Make your most epic 'I'm the main character' pose"
+    type: photo
+    blind: true
+
+  - text: "Do your best impression of someone receiving very unexpected news"
+    type: photo
+    blind: true
+
+  - text: "Show us your most photogenic yawn — make it art"
+    type: photo
+    blind: true
+
+  # --- TEXT ---
+
+  - text: "Write the worst possible fortune cookie message"
+    type: text
+    blind: true
+
+  - text: "Write a one-sentence review of your current location as if it were a Michelin-star restaurant"
+    type: text
+    blind: true
+
+  - text: "Write the most dramatic possible caption for someone making a cup of coffee"
+    type: text
+    blind: true
+
+  - text: "Write a LinkedIn post about the most mundane thing you did today"
+    type: text
+    blind: true
+
+  - text: "Write the worst possible motivational poster slogan"
+    type: text
+    blind: true
+
+  - text: "Describe your current vibe in exactly 6 words"
+    type: text
+    blind: true
+
+  - text: "Write a one-star review of gravity"
+    type: text
+    blind: true
+
+  - text: "Write a job listing for 'being yourself'"
+    type: text
+    blind: true
+
+  - text: "Write the worst possible dating app bio"
+    type: text
+    blind: true
+
+  - text: "Write a breaking news headline about your current activity"
+    type: text
+    blind: true
+
+  - text: "Describe what you're currently wearing as if narrating a high-fashion runway show"
+    type: text
+    blind: true
+
+  - text: "Write the most underwhelming cliffhanger ending possible"
+    type: text
+    blind: true
+
+  - text: "Write a movie plot using only the last three apps you opened"
+    type: text
+    blind: true
+
+  - text: "Write a one-sentence horror story set in an office kitchen"
+    type: text
+    blind: true
+
+  - text: "Describe the last thing you ate as if it were a rare archaeological discovery"
+    type: text
+    blind: true
+
+  - text: "Write a text message breaking up with your biggest bad habit"
+    type: text
+    blind: true
+
+  - text: "Write the worst possible out-of-office email reply"
+    type: text
+    blind: true
+
+  - text: "Write a haiku about your Wi-Fi signal"
+    type: text
+    blind: true
+
+  - text: "Pitch your daily routine as a Netflix documentary in one sentence"
+    type: text
+    blind: true
+
+  - text: "Write a Yelp review of Monday"
+    type: text
+    blind: true
+
+  # --- PHOTO + TEXT ---
+
+  - text: "Take a selfie right now — no posing — and caption it with what you're actually thinking"
+    type: photo_text
+    blind: true
+
+  - text: "Show the messiest thing near you and write your single best excuse for it"
+    type: photo_text
+    blind: true
+
+  - text: "Show your current footwear and write a fashion critic's review of it"
+    type: photo_text
+    blind: true
+
+  - text: "Take a photo of what you're doing right now and give it the most epic possible movie title"
+    type: photo_text
+    blind: true
+
+  - text: "Show the most random object near you and write the title of its memoir"
+    type: photo_text
+    blind: true
+
+  - text: "Show your current snack (or lack of one) and write an honest two-sentence review"
+    type: photo_text
+    blind: true
+
+  - text: "Show something on your desk and explain what it reveals about your personality"
+    type: photo_text
+    blind: true
+
+  - text: "Take a selfie and write the subtitle of your life documentary"
+    type: photo_text
+    blind: true
+
+  - text: "Take a photo of your current view and write a one-line nature documentary narration for it"
+    type: photo_text
+    blind: true
+
+  - text: "Show your most recent purchase and explain in one sentence why it was definitely a good decision"
+    type: photo_text
+    blind: true

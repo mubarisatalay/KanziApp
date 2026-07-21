@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="007-add-scheduled-at" author="kanzi">
+        <!--
+            When challenges become visible to users (submissions open).
+            Gated between 12:00–20:00 Istanbul time, chosen deterministically per day.
+            Separate from reveal_at (21:00) which is when results open.
+        -->
+
+        <!-- 1. Add nullable so the backfill can run before we enforce NOT NULL. -->
+        <addColumn tableName="challenges">
+            <column name="scheduled_at" type="TIMESTAMPTZ"/>
+        </addColumn>
+
+        <!-- 2. Backfill existing rows: reveal_at is 21:00, so subtract 9h → ~12:00. -->
+        <sql>UPDATE challenges SET scheduled_at = reveal_at - INTERVAL '9 hours' WHERE scheduled_at IS NULL</sql>
+
+        <!-- 3. Enforce NOT NULL now that every row has a value. -->
+        <addNotNullConstraint tableName="challenges" columnName="scheduled_at" columnDataType="TIMESTAMPTZ"/>
+    </changeSet>
+
+</databaseChangeLog>

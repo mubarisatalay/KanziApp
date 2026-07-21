@@ -20,4 +20,11 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
             order by r.updatedAt desc
             """)
     List<Room> findAllForMember(@Param("userId") UUID userId);
+
+    @Query("""
+            select r from Room r
+            where r.id not in (select m.roomId from RoomMember m where m.userId = :userId)
+            order by r.updatedAt desc
+            """)
+    List<Room> findNotMemberOf(@Param("userId") UUID userId);
 }

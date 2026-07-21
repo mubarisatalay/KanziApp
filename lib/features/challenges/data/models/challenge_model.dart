@@ -9,6 +9,7 @@ class ChallengeModel extends Challenge {
     required super.challengeType,
     required super.challengeDate,
     required super.createdAt,
+    super.scheduledAt,
     super.revealAt,
     super.revealed,
     super.blind,
@@ -24,6 +25,9 @@ class ChallengeModel extends Challenge {
       challengeType: ChallengeType.fromString(json['challengeType'] as String),
       challengeDate: DateTime.parse(json['challengeDate'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      scheduledAt: json['scheduledAt'] != null
+          ? DateTime.parse(json['scheduledAt'] as String)
+          : null,
       revealAt: json['revealAt'] != null
           ? DateTime.parse(json['revealAt'] as String)
           : null,

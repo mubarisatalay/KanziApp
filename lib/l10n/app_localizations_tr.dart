@@ -98,6 +98,36 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String get discoverTitle => 'Keşfet';
+
+  @override
+  String get discoverSubtitle => 'Katılmadığın odalar';
+
+  @override
+  String get discoverEmpty => 'Tüm odalarda zaten varsın!';
+
+  @override
+  String get discoverEmptySubtitle =>
+      'Yeni bir oda oluştur ya da davet kodunu bekle.';
+
+  @override
+  String membersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count üye',
+      one: '1 üye',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeToday => 'Bugün challenge var';
+
+  @override
+  String get joinWithCode => 'Kodla Katıl';
+
+  @override
   String get noRoomsTitle => 'Henüz bir odan yok';
 
   @override
@@ -212,6 +242,41 @@ class AppLocalizationsTr extends AppLocalizations {
   String get leaderboardLink => 'Skor tablosu ›';
 
   @override
+  String get mvpLink => 'Haftalık MVP ›';
+
+  @override
+  String get mvpTitle => 'Haftalık MVP';
+
+  @override
+  String get mvpWeekLabel => 'Bu hafta · normalize puan';
+
+  @override
+  String get mvpTabRoom => 'Bu Oda';
+
+  @override
+  String get mvpTabGlobal => 'Tüm Odalar';
+
+  @override
+  String get mvpNoData => 'Bu hafta henüz veri yok';
+
+  @override
+  String get mvpNoDataSub => 'Challenge tamamlayıp oy almaya başla!';
+
+  @override
+  String get mvpYouLabel => 'SEN';
+
+  @override
+  String mvpSubmissionsLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count görev',
+      one: '1 görev',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get adminBadge => 'Admin';
 
   @override
@@ -309,6 +374,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get submitAction => 'Gönder';
+
+  @override
+  String get nextChallengeLabel => 'Sonraki Challenge';
 
   @override
   String get statusActiveUpper => 'AKTİF';

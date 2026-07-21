@@ -19,6 +19,13 @@ public interface ChallengeRepository extends JpaRepository<Challenge, UUID> {
 
     List<Challenge> findTop30ByRoomIdOrderByChallengeDateDesc(UUID roomId);
 
+    @Query("select c.roomId from Challenge c where c.challengeDate = :date and c.roomId in :roomIds")
+    List<UUID> findRoomIdsWithChallengeOnDate(@Param("roomIds") List<UUID> roomIds, @Param("date") LocalDate date);
+
+    List<Challenge> findByRoomIdAndChallengeDateBetween(UUID roomId, LocalDate start, LocalDate end);
+
+    List<Challenge> findByRoomIdInAndChallengeDateBetween(List<UUID> roomIds, LocalDate start, LocalDate end);
+
     @Modifying
     @Query("update Challenge c set c.revealed = true where c.revealed = false and c.revealAt <= :now")
     int markRevealed(@Param("now") Instant now);

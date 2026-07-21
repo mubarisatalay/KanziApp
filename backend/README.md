@@ -4,7 +4,7 @@ Self-hosted REST API replacing the Supabase backend. See [`../MIGRATION_PLAN.md`
 for the full plan.
 
 ## Stack
-- Java 21, Spring Boot 4.1
+- Java 21, Sp[local-settings.xml](local-settings.xml)ring Boot 4.1
 - PostgreSQL 15 (Liquibase XML migrations)
 - Spring Security + JWT (access + refresh) — *Phase 1*
 - MinIO / S3 for images — *Phase 3*

@@ -1,5 +1,6 @@
 package com.kanzi.api.challenge;
 
+import com.kanzi.api.config.AppProperties;
 import com.kanzi.api.room.Room;
 import com.kanzi.api.room.RoomRepository;
 import org.slf4j.Logger;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +19,9 @@ import java.util.UUID;
  * Creates one challenge per room per day, drawn from the first {@link ChallengeSource} (in bean
  * order) with something to offer. Today that's the curated DB pool; the user-submitted dare
  * pool will register as an earlier, room-scoped source without this job changing.
+ *
+ * <p>All date/time logic uses the configured local zone (Europe/Istanbul) so "today" and
+ * the midnight cron boundary both follow the same clock the users see.
  */
 @Component
 public class DailyChallengeJob {
@@ -28,19 +32,22 @@ public class DailyChallengeJob {
     private final ChallengeRepository challenges;
     private final List<ChallengeSource> sources;
     private final RevealPolicy revealPolicy;
+    private final ZoneId zone;
 
     public DailyChallengeJob(RoomRepository rooms, ChallengeRepository challenges,
-                             List<ChallengeSource> sources, RevealPolicy revealPolicy) {
+                             List<ChallengeSource> sources, RevealPolicy revealPolicy,
+                             AppProperties props) {
         this.rooms = rooms;
         this.challenges = challenges;
         this.sources = sources;
         this.revealPolicy = revealPolicy;
+        this.zone = ZoneId.of(props.reveal().zone());
     }
 
-    @Scheduled(cron = "${app.daily-challenge.cron}", zone = "UTC")
+    @Scheduled(cron = "${app.daily-challenge.cron}", zone = "${app.reveal.zone}")
     @Transactional
     public void createDailyChallenges() {
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(zone);
         int created = 0;
         for (Room room : rooms.findAll()) {
             if (challenges.existsByRoomIdAndChallengeDate(room.getId(), today)) {
@@ -56,6 +63,7 @@ public class DailyChallengeJob {
             challenge.setChallengeText(draft.get().challengeText());
             challenge.setChallengeType(draft.get().challengeType().db());
             challenge.setChallengeDate(today);
+            challenge.setScheduledAt(revealPolicy.scheduledAtFor(today));
             challenge.setRevealAt(revealPolicy.revealAtFor(today));
             challenge.setBlind(draft.get().blind());
             challenges.save(challenge);

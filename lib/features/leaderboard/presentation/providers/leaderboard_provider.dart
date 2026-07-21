@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/providers/api_providers.dart';
 import '../../data/models/leaderboard_entry_model.dart';
+import '../../data/models/weekly_mvp_model.dart';
 import '../../data/repositories/leaderboard_repository.dart';
 
 /// Provider for leaderboard repository
@@ -31,3 +32,15 @@ final overallLeaderboardProvider =
 
 /// Currently selected leaderboard tab (0 = Today, 1 = All-time)
 final leaderboardTabProvider = StateProvider<int>((ref) => 0);
+
+/// Weekly MVP for a specific room (normalized score)
+final weeklyRoomMvpProvider =
+    FutureProvider.family<List<WeeklyMvpEntry>, String>((ref, roomId) async {
+  return ref.watch(leaderboardRepositoryProvider).getWeeklyRoomMvp(roomId);
+});
+
+/// Weekly MVP across all rooms the current user belongs to (normalized + cross-room)
+final weeklyGlobalMvpProvider =
+    FutureProvider<List<WeeklyMvpEntry>>((ref) async {
+  return ref.watch(leaderboardRepositoryProvider).getWeeklyGlobalMvp();
+});

@@ -33,6 +33,10 @@ public class Challenge {
     @Column(name = "challenge_date", nullable = false)
     private LocalDate challengeDate;
 
+    /** Instant at which the challenge becomes visible and submissions open. */
+    @Column(name = "scheduled_at", nullable = false)
+    private Instant scheduledAt;
+
     /** Instant at which results open and votes/submissions close. Gate on this, not on {@code revealed}. */
     @Column(name = "reveal_at", nullable = false)
     private Instant revealAt;

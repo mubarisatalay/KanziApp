@@ -9,6 +9,7 @@ import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/kor/kor.dart';
 import '../../domain/entities/challenge.dart';
 import '../providers/challenge_provider.dart';
+import '../widgets/challenge_countdown.dart';
 import '../widgets/submission_card.dart';
 import '../widgets/submit_response_sheet.dart';
 import 'reveal_ceremony_screen.dart';
@@ -28,8 +29,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final challengeAsync = ref.watch(challengeByIdProvider(challengeId));
     final submissionsAsync = ref.watch(submissionsProvider(challengeId));
-
     final l10n = AppLocalizations.of(context);
+
     return challengeAsync.when(
       data: (challenge) {
         final blindNow = challenge.blind && !challenge.isRevealedNow;
@@ -76,18 +77,25 @@ class ChallengeDetailScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        // Reveal countdown only shown while challenge is active.
                         if (challenge.isActive && challenge.revealAt != null)
                           RevealCountdown(revealAt: challenge.revealAt!),
                       ],
                     ),
                     const SizedBox(height: 18),
 
-                    // Hero: blind ceremony teaser or standard info card.
-                    if (blindNow)
+                    // Hero: upcoming (text hidden) / blind day / standard info.
+                    if (!challenge.isScheduledNow)
+                      _UpcomingHero(
+                        challenge: challenge,
+                        onExpired: () {
+                          ref.invalidate(challengeByIdProvider(challengeId));
+                          ref.invalidate(submissionsProvider(challengeId));
+                        },
+                      )
+                    else if (blindNow)
                       _BlindHero(
                         challenge: challenge,
-                        // Countdown hit zero: the day just revealed — refresh
-                        // everything and land in the ceremony.
                         onRevealReached: () {
                           ref.invalidate(challengeByIdProvider(challengeId));
                           ref.invalidate(submissionsProvider(challengeId));
@@ -101,7 +109,10 @@ class ChallengeDetailScreen extends ConsumerWidget {
                       )
                     else
                       _InfoHero(challenge: challenge),
-                    if (!blindNow &&
+
+                    // "See results" button — only after reveal, not during blind day.
+                    if (challenge.isScheduledNow &&
+                        !blindNow &&
                         challenge.isRevealedNow &&
                         challenge.submissionCount > 0) ...[
                       const SizedBox(height: 12),
@@ -129,72 +140,74 @@ class ChallengeDetailScreen extends ConsumerWidget {
                     ],
                     const SizedBox(height: 24),
 
-                    // Submissions.
-                    SectionLabel(
-                      l10n.sectionSubmissionsUpper,
-                      trailing: blindNow
-                          ? Text(
-                              l10n.anonymousNote,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                      color: AppColors.textFaint,
-                                      fontSize: 11),
-                            )
-                          : Text(
-                              '${challenge.submissionCount}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(color: AppColors.textTertiary),
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    submissionsAsync.when(
-                      data: (submissions) {
-                        if (submissions.isEmpty) {
-                          return GlassCard(
-                            padding: const EdgeInsets.all(22),
-                            child: Center(
-                              child: Text(
-                                l10n.noSubmissionsYet,
+                    // Submissions section — hidden until challenge has started.
+                    if (challenge.isScheduledNow) ...[
+                      SectionLabel(
+                        l10n.sectionSubmissionsUpper,
+                        trailing: blindNow
+                            ? Text(
+                                l10n.anonymousNote,
                                 style: Theme.of(context)
                                     .textTheme
-                                    .bodyMedium
+                                    .labelSmall
                                     ?.copyWith(
-                                        color: AppColors.textTertiary),
+                                        color: AppColors.textFaint,
+                                        fontSize: 11),
+                              )
+                            : Text(
+                                '${challenge.submissionCount}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(color: AppColors.textTertiary),
                               ),
-                            ),
-                          );
-                        }
-                        return Column(
-                          children: [
-                            for (var i = 0; i < submissions.length; i++)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: SubmissionCard(
-                                  submission: submissions[i],
-                                  index: i,
-                                  isActive: challenge.isActive,
+                      ),
+                      const SizedBox(height: 12),
+                      submissionsAsync.when(
+                        data: (submissions) {
+                          if (submissions.isEmpty) {
+                            return GlassCard(
+                              padding: const EdgeInsets.all(22),
+                              child: Center(
+                                child: Text(
+                                  l10n.noSubmissionsYet,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                          color: AppColors.textTertiary),
                                 ),
                               ),
-                          ],
-                        );
-                      },
-                      loading: () => const SubmissionListShimmer(),
-                      error: (error, _) => ErrorStateWidget(
-                        message: error.toString(),
-                        onRetry: () =>
-                            ref.invalidate(submissionsProvider(challengeId)),
+                            );
+                          }
+                          return Column(
+                            children: [
+                              for (var i = 0; i < submissions.length; i++)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: SubmissionCard(
+                                    submission: submissions[i],
+                                    index: i,
+                                    isActive: challenge.isActive,
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                        loading: () => const SubmissionListShimmer(),
+                        error: (error, _) => ErrorStateWidget(
+                          message: error.toString(),
+                          onRetry: () =>
+                              ref.invalidate(submissionsProvider(challengeId)),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
             ),
           ),
-          // Sticky bottom CTA while the challenge accepts submissions.
+          // Submit CTA — only while active (started + not revealed) and not yet submitted.
           bottomNavigationBar:
               challenge.isActive && !challenge.hasUserSubmitted
                   ? SafeArea(
@@ -244,7 +257,46 @@ class ChallengeDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Blind-day hero (3a): centered challenge text + big countdown to reveal.
+/// Upcoming hero: challenge hasn't started yet — text stays hidden.
+class _UpcomingHero extends StatelessWidget {
+  final Challenge challenge;
+  final VoidCallback? onExpired;
+
+  const _UpcomingHero({required this.challenge, this.onExpired});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard.coral(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.lock_clock,
+              size: 36, color: AppColors.textTertiary.withAlpha(180)),
+          const SizedBox(height: 14),
+          Text(
+            "Challenge hasn't started yet",
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'The challenge will be revealed when it starts.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.textTertiary),
+          ),
+          const SizedBox(height: 22),
+          ChallengeCountdown(challenge: challenge, onExpired: onExpired),
+        ],
+      ),
+    );
+  }
+}
+
+/// Blind-day hero (3a): challenge text + big countdown to reveal.
 class _BlindHero extends StatelessWidget {
   final Challenge challenge;
   final VoidCallback? onRevealReached;
@@ -313,7 +365,6 @@ class _InfoHero extends StatelessWidget {
         : active
             ? l10n.statusActiveUpper
             : l10n.statusFinishedUpper;
-    // Upcoming reads neutral; only a live "today" challenge gets the coral dot.
     final highlighted = active && !challenge.isUpcoming;
     return GlassCard.coral(
       child: Column(

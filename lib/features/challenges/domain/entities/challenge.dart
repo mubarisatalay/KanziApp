@@ -7,6 +7,9 @@ class Challenge {
   final DateTime challengeDate;
   final DateTime createdAt;
 
+  /// When the challenge becomes visible and submissions open (null for pre-migration payloads).
+  final DateTime? scheduledAt;
+
   /// When results open and votes/submissions close (null for pre-migration payloads).
   final DateTime? revealAt;
 
@@ -27,6 +30,7 @@ class Challenge {
     required this.challengeType,
     required this.challengeDate,
     required this.createdAt,
+    this.scheduledAt,
     this.revealAt,
     this.revealed = true,
     this.blind = false,
@@ -42,16 +46,19 @@ class Challenge {
         challengeDate.day == now.day;
   }
 
+  /// Whether the challenge has started (scheduled_at passed). Old payloads
+  /// without the field default to true so behaviour is unchanged.
+  bool get isScheduledNow =>
+      scheduledAt != null ? !DateTime.now().isBefore(scheduledAt!) : true;
+
   /// Whether the reveal moment has passed, derived live from [revealAt] so an
   /// open screen flips at 21:00 without a refetch. Falls back to the server
   /// snapshot for old payloads without the field.
   bool get isRevealedNow =>
       revealAt != null ? !DateTime.now().isBefore(revealAt!) : revealed;
 
-  /// Whether this challenge still accepts submissions/votes. Mirrors the
-  /// server's gate exactly: everything closes at [revealAt] — a challenge
-  /// dated tomorrow is already open, yesterday's revealed one is not.
-  bool get isActive => !isRevealedNow;
+  /// Whether this challenge still accepts submissions/votes (today, started, not yet revealed).
+  bool get isActive => isToday && isScheduledNow && !isRevealedNow;
 
   /// Whether this challenge is scheduled for a future day (created ahead by
   /// an admin): open for submissions, but not yet "today's game".
@@ -76,6 +83,7 @@ class Challenge {
     ChallengeType? challengeType,
     DateTime? challengeDate,
     DateTime? createdAt,
+    DateTime? scheduledAt,
     DateTime? revealAt,
     bool? revealed,
     bool? blind,
@@ -89,6 +97,7 @@ class Challenge {
       challengeType: challengeType ?? this.challengeType,
       challengeDate: challengeDate ?? this.challengeDate,
       createdAt: createdAt ?? this.createdAt,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
       revealAt: revealAt ?? this.revealAt,
       revealed: revealed ?? this.revealed,
       blind: blind ?? this.blind,

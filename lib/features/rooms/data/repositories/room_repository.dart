@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_client.dart';
-import '../models/room_model.dart';
+import '../models/room_discover_model.dart';
 import '../models/room_member_model.dart';
+import '../models/room_model.dart';
 
 class RoomRepositoryException implements Exception {
   final String message;
@@ -14,6 +15,7 @@ class RoomRepositoryException implements Exception {
 
 abstract class RoomRepository {
   Future<List<RoomModel>> getUserRooms();
+  Future<List<RoomDiscoverModel>> getDiscoverRooms();
   Future<RoomModel> getRoomById(String roomId);
   Future<RoomModel> createRoom({required String name, String? description});
   Future<RoomModel> joinRoomByCode(String code);
@@ -36,6 +38,18 @@ class RoomRepositoryImpl implements RoomRepository {
       final res = await _dio.get('/rooms');
       return (res.data as List)
           .map((j) => RoomModel.fromJson(j as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw RoomRepositoryException(messageFromDioError(e, 'Failed to load rooms'));
+    }
+  }
+
+  @override
+  Future<List<RoomDiscoverModel>> getDiscoverRooms() async {
+    try {
+      final res = await _dio.get('/rooms/discover');
+      return (res.data as List)
+          .map((j) => RoomDiscoverModel.fromJson(j as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw RoomRepositoryException(messageFromDioError(e, 'Failed to load rooms'));

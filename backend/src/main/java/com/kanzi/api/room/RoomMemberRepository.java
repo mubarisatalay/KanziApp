@@ -21,5 +21,7 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
 
     long countByRoomIdAndRole(UUID roomId, String role);
 
+    List<RoomMember> findByUserId(UUID userId);
+
     void deleteByRoomIdAndUserId(UUID roomId, UUID userId);
 }

@@ -99,6 +99,36 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get discoverTitle => 'Discover';
+
+  @override
+  String get discoverSubtitle => 'Rooms you haven\'t joined yet';
+
+  @override
+  String get discoverEmpty => 'You\'re in all available rooms!';
+
+  @override
+  String get discoverEmptySubtitle =>
+      'Create a new room or wait for an invite.';
+
+  @override
+  String membersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeToday => 'Challenge today';
+
+  @override
+  String get joinWithCode => 'Join with Code';
+
+  @override
   String get noRoomsTitle => 'No rooms yet';
 
   @override
@@ -213,6 +243,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leaderboardLink => 'Scoreboard ›';
 
   @override
+  String get mvpLink => 'Weekly MVP ›';
+
+  @override
+  String get mvpTitle => 'Weekly MVP';
+
+  @override
+  String get mvpWeekLabel => 'This week · normalized score';
+
+  @override
+  String get mvpTabRoom => 'This Room';
+
+  @override
+  String get mvpTabGlobal => 'All Rooms';
+
+  @override
+  String get mvpNoData => 'No data this week yet';
+
+  @override
+  String get mvpNoDataSub =>
+      'Complete challenges and earn votes to appear here!';
+
+  @override
+  String get mvpYouLabel => 'YOU';
+
+  @override
+  String mvpSubmissionsLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count subs',
+      one: '1 sub',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get adminBadge => 'Admin';
 
   @override
@@ -310,6 +376,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get submitAction => 'Submit';
+
+  @override
+  String get nextChallengeLabel => 'Next Challenge';
 
   @override
   String get statusActiveUpper => 'ACTIVE';

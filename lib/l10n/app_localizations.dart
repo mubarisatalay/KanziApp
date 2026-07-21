@@ -254,6 +254,48 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{A challenge awaits you in 1 room} other{Challenges await you in {count} rooms}}'**
   String roomsWaiting(int count);
 
+  /// No description provided for @discoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover'**
+  String get discoverTitle;
+
+  /// No description provided for @discoverSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rooms you haven\'t joined yet'**
+  String get discoverSubtitle;
+
+  /// No description provided for @discoverEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re in all available rooms!'**
+  String get discoverEmpty;
+
+  /// No description provided for @discoverEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new room or wait for an invite.'**
+  String get discoverEmptySubtitle;
+
+  /// No description provided for @membersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 member} other{{count} members}}'**
+  String membersCount(int count);
+
+  /// No description provided for @challengeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge today'**
+  String get challengeToday;
+
+  /// No description provided for @joinWithCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Join with Code'**
+  String get joinWithCode;
+
   /// No description provided for @noRoomsTitle.
   ///
   /// In en, this message translates to:
@@ -452,6 +494,60 @@ abstract class AppLocalizations {
   /// **'Scoreboard ›'**
   String get leaderboardLink;
 
+  /// No description provided for @mvpLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly MVP ›'**
+  String get mvpLink;
+
+  /// No description provided for @mvpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly MVP'**
+  String get mvpTitle;
+
+  /// No description provided for @mvpWeekLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'This week · normalized score'**
+  String get mvpWeekLabel;
+
+  /// No description provided for @mvpTabRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'This Room'**
+  String get mvpTabRoom;
+
+  /// No description provided for @mvpTabGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'All Rooms'**
+  String get mvpTabGlobal;
+
+  /// No description provided for @mvpNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No data this week yet'**
+  String get mvpNoData;
+
+  /// No description provided for @mvpNoDataSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete challenges and earn votes to appear here!'**
+  String get mvpNoDataSub;
+
+  /// No description provided for @mvpYouLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'YOU'**
+  String get mvpYouLabel;
+
+  /// No description provided for @mvpSubmissionsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 sub} other{{count} subs}}'**
+  String mvpSubmissionsLabel(int count);
+
   /// No description provided for @adminBadge.
   ///
   /// In en, this message translates to:
@@ -613,6 +709,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Submit'**
   String get submitAction;
+
+  /// No description provided for @nextChallengeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Challenge'**
+  String get nextChallengeLabel;
 
   /// No description provided for @statusActiveUpper.
   ///
