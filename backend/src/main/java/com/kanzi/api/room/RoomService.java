@@ -1,19 +1,25 @@
 package com.kanzi.api.room;
 
+import com.kanzi.api.challenge.ChallengeRepository;
 import com.kanzi.api.common.ApiException;
 import com.kanzi.api.common.AuthorizationService;
 import com.kanzi.api.room.dto.CreateRoomRequest;
+import com.kanzi.api.room.dto.RoomDiscoverResponse;
 import com.kanzi.api.room.dto.RoomMemberResponse;
 import com.kanzi.api.room.dto.RoomResponse;
 import com.kanzi.api.room.dto.UpdateRoomRequest;
 import com.kanzi.api.user.User;
 import com.kanzi.api.user.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -28,14 +34,19 @@ public class RoomService {
     private final RoomRepository rooms;
     private final RoomMemberRepository members;
     private final UserRepository users;
+    private final ChallengeRepository challenges;
     private final AuthorizationService authz;
+    private final ZoneId zone;
 
     public RoomService(RoomRepository rooms, RoomMemberRepository members, UserRepository users,
-                       AuthorizationService authz) {
+                       ChallengeRepository challenges, AuthorizationService authz,
+                       @Value("${app.reveal.zone:Europe/Istanbul}") String zoneId) {
         this.rooms = rooms;
         this.members = members;
         this.users = users;
+        this.challenges = challenges;
         this.authz = authz;
+        this.zone = ZoneId.of(zoneId);
     }
 
     @Transactional(readOnly = true)
@@ -57,6 +68,27 @@ public class RoomService {
                 .map(r -> RoomResponse.from(r,
                         countByRoom.getOrDefault(r.getId(), 0L),
                         myRoleByRoom.get(r.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RoomDiscoverResponse> getDiscoverRooms(UUID userId) {
+        List<Room> discoverRooms = rooms.findNotMemberOf(userId);
+        if (discoverRooms.isEmpty()) return List.of();
+
+        List<UUID> roomIds = discoverRooms.stream().map(Room::getId).toList();
+        Map<UUID, Long> countByRoom = members.findByRoomIdIn(roomIds).stream()
+                .collect(Collectors.groupingBy(RoomMember::getRoomId, Collectors.counting()));
+
+        LocalDate today = LocalDate.now(zone);
+        Set<UUID> roomsWithChallenge = Set.copyOf(
+                challenges.findRoomIdsWithChallengeOnDate(roomIds, today));
+
+        return discoverRooms.stream()
+                .map(r -> RoomDiscoverResponse.from(
+                        r,
+                        countByRoom.getOrDefault(r.getId(), 0L),
+                        roomsWithChallenge.contains(r.getId())))
                 .toList();
     }
 

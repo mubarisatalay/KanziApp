@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/providers/api_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../data/models/room_discover_model.dart';
 import '../../data/models/room_model.dart';
 import '../../data/models/room_member_model.dart';
 import '../../data/repositories/room_repository.dart';
@@ -19,6 +20,14 @@ final userRoomsProvider = FutureProvider<List<RoomModel>>((ref) async {
 
   final repository = ref.watch(roomRepositoryProvider);
   return repository.getUserRooms();
+});
+
+/// Provider for rooms the user hasn't joined yet
+final discoverRoomsProvider = FutureProvider<List<RoomDiscoverModel>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+  final repository = ref.watch(roomRepositoryProvider);
+  return repository.getDiscoverRooms();
 });
 
 /// Provider for a single room by ID

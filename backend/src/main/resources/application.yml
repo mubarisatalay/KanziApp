@@ -3,7 +3,7 @@ spring:
     name: kanzi-api
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/kanzi}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/kanzi}
     username: ${DB_USERNAME:kanzi}
     password: ${DB_PASSWORD:kanzi}
 

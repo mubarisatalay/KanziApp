@@ -11,9 +11,11 @@ import '../../../challenges/domain/entities/challenge.dart';
 import '../../../challenges/presentation/providers/challenge_provider.dart';
 import '../../../challenges/presentation/screens/challenge_detail_screen.dart';
 import '../../../challenges/presentation/screens/challenge_history_screen.dart';
+import '../../../challenges/presentation/widgets/challenge_countdown.dart';
 import '../../../challenges/presentation/widgets/create_challenge_dialog.dart';
 import '../../../challenges/presentation/widgets/submit_response_sheet.dart';
 import '../../../leaderboard/presentation/screens/leaderboard_screen.dart';
+import '../../../leaderboard/presentation/screens/mvp_screen.dart';
 import '../providers/room_provider.dart';
 import '../widgets/create_room_dialog.dart' show KorDialogField;
 
@@ -149,25 +151,49 @@ class RoomDetailScreen extends ConsumerWidget {
                 // Members.
                 SectionLabel(
                   l10n.sectionMembersUpper,
-                  trailing: PressableScale(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => LeaderboardScreen(
-                            roomId: room.id,
-                            roomName: room.name,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PressableScale(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => MvpScreen(
+                              roomId: room.id,
+                              roomName: room.name,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    child: Text(
-                      l10n.leaderboardLink,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: AppColors.primaryText,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
+                        child: Text(
+                          l10n.mvpLink,
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: AppColors.primary,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      PressableScale(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => LeaderboardScreen(
+                              roomId: room.id,
+                              roomName: room.name,
+                            ),
                           ),
-                    ),
+                        ),
+                        child: Text(
+                          l10n.leaderboardLink,
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: AppColors.primaryText,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -517,7 +543,12 @@ class _TodayChallengeHero extends ConsumerWidget {
     return challengeAsync.when(
       data: (challenge) => challenge == null
           ? _NoChallengeCard(roomId: roomId, isAdmin: isAdmin)
-          : _HeroCard(challenge: challenge, roomId: roomId),
+          : _HeroCard(
+              challenge: challenge,
+              roomId: roomId,
+              onCountdownExpired: () =>
+                  ref.invalidate(todayChallengeProvider(roomId)),
+            ),
       loading: () => const ChallengeCardShimmer(),
       error: (error, _) => GlassCard(
         child: Column(
@@ -587,12 +618,50 @@ class _NoChallengeCard extends StatelessWidget {
 class _HeroCard extends StatelessWidget {
   final Challenge challenge;
   final String roomId;
+  final VoidCallback? onCountdownExpired;
 
-  const _HeroCard({required this.challenge, required this.roomId});
+  const _HeroCard({
+    required this.challenge,
+    required this.roomId,
+    this.onCountdownExpired,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
+    // Before scheduled_at: text stays hidden, only countdown shown.
+    if (!challenge.isScheduledNow) {
+      return GlassCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.hourglass_top_outlined,
+                    size: 16, color: AppColors.textTertiary),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.nextChallengeLabel,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ChallengeCountdown(
+              challenge: challenge,
+              onExpired: onCountdownExpired,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // After scheduled_at: full KOR hero card.
     return GlassCard.coral(
       onTap: () {
         Navigator.of(context).push(
@@ -609,14 +678,18 @@ class _HeroCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // AKTİF pill.
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.coralTint,
+                  color: challenge.isActive
+                      ? AppColors.coralTint
+                      : AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(99),
-                  border: Border.all(color: AppColors.coralBorder),
+                  border: Border.all(
+                      color: challenge.isActive
+                          ? AppColors.coralBorder
+                          : AppColors.glassBorder),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -624,8 +697,10 @@ class _HeroCard extends StatelessWidget {
                     Container(
                       width: 6,
                       height: 6,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
+                      decoration: BoxDecoration(
+                        color: challenge.isActive
+                            ? AppColors.primary
+                            : AppColors.textTertiary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -634,12 +709,15 @@ class _HeroCard extends StatelessWidget {
                       challenge.isActive
                           ? l10n.statusActiveUpper
                           : l10n.statusFinishedUpper,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
-                            color: AppColors.primaryText,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.labelSmall?.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1,
+                                color: challenge.isActive
+                                    ? AppColors.primaryText
+                                    : AppColors.textTertiary,
+                              ),
                     ),
                   ],
                 ),
@@ -680,7 +758,8 @@ class _HeroCard extends StatelessWidget {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      builder: (_) => SubmitResponseSheet(challenge: challenge),
+                      builder: (_) =>
+                          SubmitResponseSheet(challenge: challenge),
                     );
                   },
                 ),

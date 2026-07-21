@@ -12,6 +12,7 @@ import '../providers/room_provider.dart';
 import '../widgets/create_room_dialog.dart';
 import '../widgets/join_room_dialog.dart';
 import '../widgets/room_card.dart';
+import 'discover_screen.dart';
 import 'room_detail_screen.dart';
 
 /// Home screen showing list of joined rooms — KOR design "2a Home".
@@ -40,6 +41,14 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   const KorWordmark(size: 24),
                   const Spacer(),
+                  GlassIconButton(
+                    icon: Icons.explore_outlined,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const DiscoverScreen()),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   PressableScale(
                     onTap: () {
                       Navigator.of(context).push(
@@ -103,6 +112,8 @@ class HomeScreen extends ConsumerWidget {
                               },
                             ),
                           ),
+                      const SizedBox(height: 8),
+                      _DiscoverBanner(),
                     ],
                   ),
                 ),
@@ -209,6 +220,49 @@ class HomeScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => const JoinRoomDialog(),
+    );
+  }
+}
+
+class _DiscoverBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const DiscoverScreen()),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.explore_outlined,
+                size: 20, color: AppColors.textSecondary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.discoverTitle,
+                    style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 2),
+                Text(l10n.discoverSubtitle,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right,
+              size: 20, color: AppColors.textTertiary),
+        ],
+      ),
     );
   }
 }

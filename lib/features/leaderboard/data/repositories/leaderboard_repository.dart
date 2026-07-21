@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../models/leaderboard_entry_model.dart';
+import '../models/weekly_mvp_model.dart';
 
 class LeaderboardRepositoryException implements Exception {
   final String message;
@@ -18,6 +19,10 @@ abstract class LeaderboardRepository {
   });
 
   Future<List<LeaderboardEntryModel>> getOverallLeaderboard(String roomId);
+
+  Future<List<WeeklyMvpEntry>> getWeeklyRoomMvp(String roomId);
+
+  Future<List<WeeklyMvpEntry>> getWeeklyGlobalMvp();
 }
 
 class LeaderboardRepositoryImpl implements LeaderboardRepository {
@@ -55,6 +60,32 @@ class LeaderboardRepositoryImpl implements LeaderboardRepository {
     } on DioException catch (e) {
       throw LeaderboardRepositoryException(
           messageFromDioError(e, 'Failed to load leaderboard'));
+    }
+  }
+
+  @override
+  Future<List<WeeklyMvpEntry>> getWeeklyRoomMvp(String roomId) async {
+    try {
+      final res = await _dio.get('/rooms/$roomId/leaderboard/weekly');
+      return (res.data as List)
+          .map((j) => WeeklyMvpEntry.fromJson(j as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw LeaderboardRepositoryException(
+          messageFromDioError(e, 'Failed to load weekly MVP'));
+    }
+  }
+
+  @override
+  Future<List<WeeklyMvpEntry>> getWeeklyGlobalMvp() async {
+    try {
+      final res = await _dio.get('/leaderboard/weekly');
+      return (res.data as List)
+          .map((j) => WeeklyMvpEntry.fromJson(j as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw LeaderboardRepositoryException(
+          messageFromDioError(e, 'Failed to load global weekly MVP'));
     }
   }
 }

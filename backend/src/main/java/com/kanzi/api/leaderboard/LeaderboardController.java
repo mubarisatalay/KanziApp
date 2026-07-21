@@ -2,6 +2,7 @@ package com.kanzi.api.leaderboard;
 
 import com.kanzi.api.common.CurrentUserId;
 import com.kanzi.api.leaderboard.dto.LeaderboardEntry;
+import com.kanzi.api.leaderboard.dto.WeeklyMvpEntry;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,5 +36,10 @@ public class LeaderboardController {
     @GetMapping("/overall")
     public List<LeaderboardEntry> overall(@CurrentUserId UUID userId, @PathVariable UUID roomId) {
         return leaderboard.overall(roomId, userId);
+    }
+
+    @GetMapping("/weekly")
+    public List<WeeklyMvpEntry> weekly(@CurrentUserId UUID userId, @PathVariable UUID roomId) {
+        return leaderboard.weeklyRoom(roomId, userId);
     }
 }

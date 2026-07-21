@@ -105,6 +105,7 @@ public class ChallengeService {
         challenge.setChallengeText(request.challengeText().trim());
         challenge.setChallengeType(type.db());
         challenge.setChallengeDate(request.challengeDate());
+        challenge.setScheduledAt(revealPolicy.scheduledAtFor(request.challengeDate()));
         challenge.setRevealAt(revealPolicy.revealAtFor(request.challengeDate()));
         challenge.setBlind(request.blindOrDefault());
         challenges.saveAndFlush(challenge);
@@ -338,11 +339,19 @@ public class ChallengeService {
     }
 
     private void assertVotingOpen(Challenge challenge) {
+        assertScheduled(challenge, "Voting is");
         assertBeforeReveal(challenge, "Voting is");
     }
 
     private void assertSubmissionsOpen(Challenge challenge) {
+        assertScheduled(challenge, "Submissions are");
         assertBeforeReveal(challenge, "Submissions are");
+    }
+
+    private void assertScheduled(Challenge challenge, String subject) {
+        if (!revealPolicy.isScheduled(challenge)) {
+            throw ApiException.conflict(subject + " not open yet — the challenge hasn't started.");
+        }
     }
 
     private void assertBeforeReveal(Challenge challenge, String subject) {

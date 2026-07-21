@@ -3,6 +3,7 @@ package com.kanzi.api.room;
 import com.kanzi.api.common.CurrentUserId;
 import com.kanzi.api.room.dto.CreateRoomRequest;
 import com.kanzi.api.room.dto.JoinRoomRequest;
+import com.kanzi.api.room.dto.RoomDiscoverResponse;
 import com.kanzi.api.room.dto.RoomMemberResponse;
 import com.kanzi.api.room.dto.RoomResponse;
 import com.kanzi.api.room.dto.UpdateRoomRequest;
@@ -26,6 +27,11 @@ public class RoomController {
     @GetMapping
     public List<RoomResponse> getUserRooms(@CurrentUserId UUID userId) {
         return rooms.getUserRooms(userId);
+    }
+
+    @GetMapping("/discover")
+    public List<RoomDiscoverResponse> discoverRooms(@CurrentUserId UUID userId) {
+        return rooms.getDiscoverRooms(userId);
     }
 
     @PostMapping
